@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <title>Mondial 2026 Pronostics</title>
   <style>
@@ -19,7 +19,7 @@
   <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
   <script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback, useRef } = React;
- 
+
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const C = {
   bg: "#0a0e1a",
@@ -34,7 +34,7 @@ const C = {
   muted: "#6B7A99",
   card: "rgba(15,20,40,0.85)",
 };
- 
+
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const FLAGS = {
   "Mexique":"🇲🇽","Corée du Sud":"🇰🇷","Afrique du Sud":"🇿🇦","Turquie":"🇹🇷",
@@ -51,7 +51,7 @@ const FLAGS = {
   "Angleterre":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Croatie":"🇭🇷","Ghana":"🇬🇭","Panama":"🇵🇦",
 };
 const F = t => FLAGS[t] || "🏳️";
- 
+
 const FIFA_RANK = {
   "Argentine":1,"France":2,"Espagne":3,"Angleterre":4,"Brésil":5,"Belgique":6,
   "Portugal":7,"Pays-Bas":8,"Allemagne":9,"Croatie":10,"Maroc":12,"Uruguay":13,
@@ -63,7 +63,7 @@ const FIFA_RANK = {
   "Afrique du Sud":41,"Irak":42,"Panama":43,"RD Congo":44,"Jordanie":45,
   "Ouzbékistan":46,"Curaçao":47,"Arabie Saoudite":48,"Haïti":50,"Nouvelle-Zélande":55,
 };
- 
+
 // Données supplémentaires : force réelle basée sur performances récentes 2024-2025
 // (qualifs CDM, Ligue des Nations, matchs amicaux de référence)
 const TEAM_STRENGTH = {
@@ -78,15 +78,15 @@ const TEAM_STRENGTH = {
   "Irak":57,"Panama":58,"RD Congo":59,"Jordanie":56,"Ouzbékistan":55,
   "Curaçao":52,"Arabie Saoudite":60,"Haïti":50,"Nouvelle-Zélande":54,
 };
- 
+
 function calcOdds(tH, tA) {
   const sH = TEAM_STRENGTH[tH] || 55;
   const sA = TEAM_STRENGTH[tA] || 55;
- 
+
   // Force relative avec avantage domicile (~+5% en CDM)
   const fH = Math.pow(sH / 100, 2.5) * 1.08;
   const fA = Math.pow(sA / 100, 2.5);
- 
+
   // Probabilité de nul selon l'écart de niveau
   // Statistique réelle CDM : ~22-26% de nuls en phase de groupes
   // Plus l'écart est faible → plus de nuls
@@ -96,18 +96,18 @@ function calcOdds(tH, tA) {
                 : diff < 20 ? 0.23
                 : diff < 30 ? 0.20
                 : 0.16; // gros écart → peu de nuls
- 
+
   const tot = fH + fA;
   const pH = (fH / tot) * (1 - drawProb);
   const pA = (fA / tot) * (1 - drawProb);
   const pN = drawProb;
- 
+
   // Marge bookmaker 7%
   const m = 1.07;
   const raw = p => Math.max(1.04, Math.round((1 / (p * m)) * 100) / 100);
   return { h: raw(pH), n: raw(pN), a: raw(pA) };
 }
- 
+
 // matches: [idxDomicile, idxExtérieur], schedule: "JJ/MM HH:MM", venue: "Stade, Ville"
 const GROUPS = {
   A:{teams:["Mexique","Corée du Sud","Afrique du Sud","Turquie"],matches:[
@@ -207,10 +207,10 @@ const GROUPS = {
     [2,1,{d:"27/06",h:"22:00",v:"BMO Field, Toronto"}],
   ]},
 };
- 
+
 const PTS = {groupGoal:1,groupResult:2,groupExact:5,r32:3,qfWin:5,sfWin:8,finalWin:15,finalExact:25};
 const MISE=5, MAX_GRILLES=3;
- 
+
 const JOKERS_DATA = [
   { id:"double", name:"JOKER X2", sub:"MISE DOUBLE", icon:"⚡", rating:"X2",
     accent:"#C9A84C", glow:"rgba(201,168,76,0.7)",
@@ -234,9 +234,9 @@ const JOKERS_DATA = [
     stats:[["EFFET","×5 PTS"],["CIBLE","UPSET"],["USAGE","1 FOIS"]] },
 ];
 const PLAYERS_KEY="wc2026_players_v4", RESULTS_KEY="wc2026_results_v4", SYNC_KEY="wc2026_lastsync";
- 
+
 function scoreResult(h,a){if(h>a)return"H";if(h<a)return"A";return"N";}
- 
+
 function computeScore(picks,results){
   let pts=0;
   Object.entries(GROUPS).forEach(([grp,{teams,matches}])=>{
@@ -253,24 +253,24 @@ function computeScore(picks,results){
   });
   return pts;
 }
- 
+
 // ─── SYNC SCORES VIA CLAUDE API ───────────────────────────────────────────────
 async function fetchScoresFromClaude(results) {
   const matchList = Object.entries(GROUPS).flatMap(([grp,{teams,matches}]) =>
     matches.map(([i,j],mIdx)=>`${grp}_${mIdx}: ${teams[i]} vs ${teams[j]}`)
   ).join("\n");
- 
+
   const prompt = `Coupe du Monde 2026 (11 juin - 19 juillet 2026, USA/Canada/Mexique).
 Cherche sur le web les scores OFFICIELS ET DÉFINITIFS des matchs déjà joués.
- 
+
 Matchs disponibles:
 ${matchList}
- 
+
 Réponds UNIQUEMENT avec du JSON valide, sans markdown, sans texte:
 {"groups":{"A_0":{"h":2,"a":1},"B_2":{"h":0,"a":0}}}
- 
+
 N'inclus QUE les matchs terminés. Si aucun match joué: {"groups":{}}`;
- 
+
   const resp = await fetch("https://api.anthropic.com/v1/messages",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
@@ -290,12 +290,12 @@ N'inclus QUE les matchs terminés. Si aucun match joué: {"groups":{}}`;
   }
   return results;
 }
- 
- 
+
+
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://rwpmwepmfeqkqumimimo.supabase.co";
 const SUPABASE_KEY = "sb_publishable_YvXu4AT2SIcBEMHPOGYPLQ_ipDO7tc0";
- 
+
 async function dbGet(key) {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/data?key=eq.${key}&select=value`, {
@@ -305,7 +305,7 @@ async function dbGet(key) {
     return rows.length > 0 ? JSON.parse(rows[0].value) : null;
   } catch(e) { return null; }
 }
- 
+
 async function dbSet(key, value) {
   try {
     const body = JSON.stringify({ key, value: JSON.stringify(value) });
@@ -322,7 +322,7 @@ async function dbSet(key, value) {
     });
   } catch(e) {}
 }
- 
+
 function loadLocal(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch(e) { return fallback; }
@@ -354,9 +354,9 @@ async function loadBest(key, fallback) {
   }
   return local !== null ? local : fallback;
 }
- 
+
 // ─── APP ──────────────────────────────────────────────────────────────────────
-export default function App() {
+function App() {
   const [players, setPlayers] = useState(() => loadLocal(PLAYERS_KEY, []));
   const [results, setResults] = useState(() => loadLocal(RESULTS_KEY, {groups:{},ko:{r32:[],qf:[],sf:[],final:[]}}));
   const [loading, setLoading] = useState(false);
@@ -369,7 +369,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [lastSync, setLastSync] = useState(null);
   const syncRef = useRef(false);
- 
+
   // Sync initiale depuis le stockage partagé (sans bloquer l'UI)
   useEffect(()=>{
     (async()=>{
@@ -379,12 +379,12 @@ export default function App() {
       setPlayers(p); setResults(r); setLastSync(ls);
     })();
   },[]);
- 
+
   // Polling toutes les 20s — sync depuis partagé
   // On utilise une ref pour accéder au state players le plus récent sans dépendance
   const playersRef = useRef(players);
   useEffect(()=>{ playersRef.current = players; }, [players]);
- 
+
   useEffect(()=>{
     const id = setInterval(async()=>{
       try {
@@ -406,7 +406,7 @@ export default function App() {
     }, 20000);
     return ()=>clearInterval(id);
   },[]);
- 
+
   // Auto-sync scores toutes les 30 min (une seule instance à la fois)
   useEffect(()=>{
     const doSync = async () => {
@@ -428,15 +428,15 @@ export default function App() {
     const id = setInterval(doSync, 30*60*1000);
     return ()=>clearInterval(id);
   },[]);
- 
+
   const savePlayers = async p => { setPlayers(p); await saveAll(PLAYERS_KEY, p); };
- 
+
   const login = (name) => {
     setCurrentUser(name);
     try { localStorage.setItem('wc2026_user', name); } catch(e) {}
   };
   const saveResults = async r => { setResults(r); await saveAll(RESULTS_KEY, r); };
- 
+
   const manualSync = async () => {
     if(syncRef.current) return;
     syncRef.current = true;
@@ -449,11 +449,11 @@ export default function App() {
     } catch(e){}
     syncRef.current = false;
   };
- 
+
   const curPlayerObj = players.find(p=>p.name===currentUser);
- 
+
   // Loader supprimé — données chargées depuis localStorage immédiatement
- 
+
   if(screen==="onboarding") return (
     <Onboarding players={players} onJoin={async name=>{
       isRegistering.current = true; // pause polling
@@ -476,7 +476,7 @@ export default function App() {
       setTimeout(()=>{ isRegistering.current = false; }, 10000);
     }} />
   );
- 
+
   if(screen==="grid") return (
     <GridScreen
       player={players.find(p=>p.name===editGrille.playerName)}
@@ -501,7 +501,7 @@ export default function App() {
       onBack={()=>setScreen("main")}
     />
   );
- 
+
   if(screen==="jokers") return (
     <JokersScreen
       playerName={pendingPicks?.playerName}
@@ -515,7 +515,7 @@ export default function App() {
       onSkip={()=>{ setTab("score"); setScreen("main"); }}
     />
   );
- 
+
   return (
     <div style={styles.app}>
       <Background />
@@ -567,7 +567,7 @@ export default function App() {
     </div>
   );
 }
- 
+
 // ─── BACKGROUND ───────────────────────────────────────────────────────────────
 function Background() {
   return (
@@ -580,7 +580,7 @@ function Background() {
     </div>
   );
 }
- 
+
 // ─── BOTTOM NAV ───────────────────────────────────────────────────────────────
 function BottomNav({tab,setTab}) {
   const items=[
@@ -601,7 +601,7 @@ function BottomNav({tab,setTab}) {
     </nav>
   );
 }
- 
+
 // ─── LOADER ───────────────────────────────────────────────────────────────────
 function Loader(){
   return(
@@ -615,7 +615,7 @@ function Loader(){
     </div>
   );
 }
- 
+
 // ─── ONBOARDING ───────────────────────────────────────────────────────────────
 function Onboarding({players,onJoin}){
   const [name,setName]=useState("");
@@ -652,11 +652,11 @@ function Onboarding({players,onJoin}){
     </div>
   );
 }
- 
+
 // ─── SCORE TAB ────────────────────────────────────────────────────────────────
 function ScoreTab({currentUser,players,results,onLogin,onAddGrille,onEditGrille}){
   const player = players.find(p=>p.name===currentUser);
- 
+
   if(!currentUser||!player) return(
     <div style={styles.tabPage}>
       <div style={styles.heroSection}>
@@ -670,19 +670,19 @@ function ScoreTab({currentUser,players,results,onLogin,onAddGrille,onEditGrille}
       </div>
     </div>
   );
- 
+
   const grilles = player.grilles||[];
   const scores = grilles.map(g=>g?computeScore(g,results):0);
   const best = scores.length>0?Math.max(...scores):0;
   const totalMise = grilles.length*MISE;
   const canAdd = grilles.length<MAX_GRILLES;
- 
+
   // Calcul rang
   const allScored = players.filter(p=>(p.grilles||[]).length>0)
     .map(p=>{const s=(p.grilles||[]).map(g=>g?computeScore(g,results):0);return{name:p.name,best:s.length>0?Math.max(...s):0};})
     .sort((a,b)=>b.best-a.best);
   const rank = allScored.findIndex(p=>p.name===currentUser)+1;
- 
+
   return(
     <div style={styles.tabPage}>
       {/* Header joueur */}
@@ -694,14 +694,14 @@ function ScoreTab({currentUser,players,results,onLogin,onAddGrille,onEditGrille}
         </div>
         {rank>0&&<div style={styles.playerRank}>#{rank}</div>}
       </div>
- 
+
       {/* Score principal */}
       <div style={styles.scoreHero}>
         <div style={styles.scoreNum}>{best}</div>
         <div style={styles.scorePts}>points</div>
         <div style={styles.scoreSub}>meilleur score</div>
       </div>
- 
+
       {/* Grilles */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Mes grilles</div>
@@ -730,7 +730,7 @@ function ScoreTab({currentUser,players,results,onLogin,onAddGrille,onEditGrille}
           </button>
         )}
       </div>
- 
+
       {/* Barème */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Barème des points</div>
@@ -750,24 +750,24 @@ function ScoreTab({currentUser,players,results,onLogin,onAddGrille,onEditGrille}
     </div>
   );
 }
- 
+
 // ─── MATCHS TAB ───────────────────────────────────────────────────────────────
 function generateWhatsAppRecap(grp, results, players) {
   const {teams, matches} = GROUPS[grp];
   const lines = [`⚽ *RÉCAP GROUPE ${grp} - CDM 2026*\n`];
- 
+
   let hasAnyResult = false;
- 
+
   matches.forEach((matchDef, mIdx) => {
     const i=matchDef[0], j=matchDef[1], sched=matchDef[2]||{};
     const key=`${grp}_${mIdx}`;
     const r=(results.groups||{})[key];
     if(!r||r.h===""||r.a==="") return;
     hasAnyResult = true;
- 
+
     const rH=parseInt(r.h), rA=parseInt(r.a);
     lines.push(`${F(teams[i])} *${teams[i]} ${r.h}-${r.a} ${teams[j]}* ${F(teams[j])}`);
- 
+
     const picks = players.flatMap(p =>
       (p.grilles||[]).map((g,gi) => {
         if(!g) return null;
@@ -781,7 +781,7 @@ function generateWhatsAppRecap(grp, results, players) {
         return {name:p.name+(gi>0?` (G${gi+1})`:""), pick:`${pH}-${pA}`, label, pts};
       }).filter(Boolean)
     );
- 
+
     if(picks.length>0){
       picks.forEach(pw=>{
         lines.push(`  ${pw.label} · ${pw.name} · ${pw.pick}${pw.pts>0?` · +${pw.pts}pts`:""}`);
@@ -789,9 +789,9 @@ function generateWhatsAppRecap(grp, results, players) {
     }
     lines.push("");
   });
- 
+
   if(!hasAnyResult) return null;
- 
+
   // Classement global
   const scored = players
     .filter(p=>(p.grilles||[]).length>0)
@@ -800,36 +800,36 @@ function generateWhatsAppRecap(grp, results, players) {
       return{name:p.name, best:scores.length>0?Math.max(...scores):0};
     })
     .sort((a,b)=>b.best-a.best);
- 
+
   lines.push("🏆 *CLASSEMENT*");
   scored.slice(0,5).forEach((p,i)=>{
     const medals=["🥇","🥈","🥉","4️⃣","5️⃣"];
     lines.push(`${medals[i]} ${p.name} · ${p.best} pts`);
   });
- 
+
   const total = players.reduce((s,p)=>s+(p.grilles||[]).length*MISE,0);
   lines.push(`\n💰 Cagnotte : ${total}€`);
   lines.push("📱 Pronostics sur l'app !");
- 
+
   return lines.join("\n");
 }
- 
+
 function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdminLogin}){
   const [grp,setGrp]=useState("A");
   const [syncing,setSyncing]=useState(false);
   const [adminPwd,setAdminPwd]=useState("");
   const [showAdminPwd,setShowAdminPwd]=useState(false);
   const [expandedKey,setExpandedKey]=useState(null);
- 
+
   const handleSync=async()=>{
     setSyncing(true);
     await onSync();
     setSyncing(false);
   };
- 
+
   const {teams,matches}=GROUPS[grp];
   const syncAgo = lastSync?Math.round((Date.now()-lastSync)/60000):null;
- 
+
   return(
     <div style={styles.tabPage}>
       <div style={styles.matchsHeader}>
@@ -853,14 +853,14 @@ function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdm
           </div>
         )}
       </div>
- 
+
       {/* Groupes tabs */}
       <div style={styles.groupTabs}>
         {Object.keys(GROUPS).map(k=>(
           <button key={k} style={{...styles.groupTab,...(grp===k?styles.groupTabOn:{})}} onClick={()=>setGrp(k)}>{k}</button>
         ))}
       </div>
- 
+
       {/* Matchs du groupe */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Groupe {grp}</div>
@@ -963,7 +963,7 @@ function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdm
           );
         })}
       </div>
- 
+
       {/* Admin login */}
       {!isAdmin&&(
         <div style={styles.section}>
@@ -980,7 +980,7 @@ function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdm
     </div>
   );
 }
- 
+
 // ─── CLASSEMENT TAB ───────────────────────────────────────────────────────────
 function ClassementTab({players,results,currentUser}){
   const scored=players
@@ -991,16 +991,16 @@ function ClassementTab({players,results,currentUser}){
       return{...p,best,scores,totalMise:grilles.length*MISE};
     })
     .sort((a,b)=>b.best-a.best);
- 
+
   const total=players.reduce((s,p)=>s+(p.grilles||[]).length*MISE,0);
   const pot=[Math.round(total*0.6),Math.round(total*0.3),Math.round(total*0.1)];
   const medals=["🥇","🥈","🥉"];
   const podiumColors=["#FFD700","#C0C0C0","#CD7F32"];
- 
+
   return(
     <div style={styles.tabPage}>
       <h2 style={styles.tabTitle}>Classement</h2>
- 
+
       {/* Cagnotte */}
       <div style={styles.potCard}>
         <div style={styles.potLabel}>💰 Cagnotte totale</div>
@@ -1011,7 +1011,7 @@ function ClassementTab({players,results,currentUser}){
           <div style={styles.potPrize}><span>🥉</span><span style={{color:podiumColors[2]}}>{pot[2]}€</span></div>
         </div>
       </div>
- 
+
       {/* Classement */}
       {scored.length===0&&<p style={styles.empty}>Aucune grille remplie pour l'instant.</p>}
       {scored.map((p,i)=>{
@@ -1038,8 +1038,8 @@ function ClassementTab({players,results,currentUser}){
     </div>
   );
 }
- 
- 
+
+
 // ─── CARD SHAPE FIFA TOTY ────────────────────────────────────────────────────
 function CardShape({ accent, children }) {
   const id = accent.replace('#','');
@@ -1081,7 +1081,7 @@ function CardShape({ accent, children }) {
     </div>
   );
 }
- 
+
 // ─── JOKER CARD ───────────────────────────────────────────────────────────────
 function JokerCard({ joker, selected, onSelect, maxReached }) {
   const [flipped, setFlipped] = useState(false);
@@ -1089,7 +1089,7 @@ function JokerCard({ joker, selected, onSelect, maxReached }) {
   const [shine, setShine] = useState({x:50,y:40});
   const ref = useRef(null);
   const disabled = !selected && maxReached;
- 
+
   const onMove = e => {
     if(!ref.current||flipped) return;
     const r=ref.current.getBoundingClientRect();
@@ -1097,7 +1097,7 @@ function JokerCard({ joker, selected, onSelect, maxReached }) {
     setTilt({x:(y-0.5)*-12,y:(x-0.5)*12}); setShine({x:x*100,y:y*100});
   };
   const onLeave=()=>{setTilt({x:0,y:0});setShine({x:50,y:40});};
- 
+
   return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
       <div ref={ref}
@@ -1180,26 +1180,26 @@ function JokerCard({ joker, selected, onSelect, maxReached }) {
     </div>
   );
 }
- 
- 
+
+
 // ─── JOKERS TAB ───────────────────────────────────────────────────────────────
 function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers, onActivateJoker }) {
   const player = players.find(p=>p.name===currentUser);
   const [activating, setActivating] = useState(null); // id du joker en cours d'activation
   const [chosenTarget, setChosenTarget] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
- 
+
   if(!currentUser || !player) return (
     <div style={styles.tabPage}>
       <h2 style={styles.tabTitle}>🃏 Jokers</h2>
       <p style={{...styles.empty, marginTop:40}}>Connecte-toi pour voir tes jokers.</p>
     </div>
   );
- 
+
   const myJokers = player.jokers || [];
   const usedJokers = player.usedJokers || {};
   const hasJokers = myJokers.length > 0;
- 
+
   // Tous les matchs à venir (pas encore joués)
   const upcomingMatches = Object.entries(GROUPS).flatMap(([grp,{teams,matches}]) =>
     matches.map((m,mIdx) => {
@@ -1209,20 +1209,20 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
       return played ? null : { key, label:`${teams[m[0]]} vs ${teams[m[1]]}`, grp, mIdx, flags:`${F(teams[m[0]])} ${F(teams[m[1]])}` };
     }).filter(Boolean)
   );
- 
+
   const groupKeys = Object.keys(GROUPS);
- 
+
   const handleActivate = async () => {
     if(!chosenTarget || !activating) return;
     await onActivateJoker(activating, chosenTarget);
     setActivating(null); setChosenTarget(null); setConfirmed(true);
     setTimeout(()=>setConfirmed(false), 3000);
   };
- 
+
   return (
     <div style={styles.tabPage}>
       <h2 style={styles.tabTitle}>🃏 Jokers</h2>
- 
+
       {/* Pas encore de jokers */}
       {!hasJokers && (
         <div style={{...styles.section, textAlign:"center", padding:24}}>
@@ -1231,7 +1231,7 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
           <button style={styles.btnGold} onClick={onChooseJokers}>Choisir mes jokers →</button>
         </div>
       )}
- 
+
       {/* Mes jokers */}
       {hasJokers && (
         <div style={styles.section}>
@@ -1279,7 +1279,7 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
           })}
         </div>
       )}
- 
+
       {/* Panneau d'activation */}
       {activating && (()=>{
         const joker = JOKERS_DATA.find(j=>j.id===activating);
@@ -1288,7 +1288,7 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
           <div style={{...styles.section, background:`${joker.accent}08`, border:`1px solid ${joker.accent}25`, borderRadius:16, padding:16}}>
             <div style={{...styles.sectionTitle, color:joker.accent}}>{joker.icon} Activer {joker.name}</div>
             <p style={{color:C.muted, fontSize:13, marginBottom:14}}>{joker.desc}</p>
- 
+
             {/* Joker Journée → choisir un groupe */}
             {isJournee && (
               <>
@@ -1301,7 +1301,7 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
                 </div>
               </>
             )}
- 
+
             {/* Autres jokers → choisir un match */}
             {!isJournee && (
               <>
@@ -1327,7 +1327,7 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
                 </div>
               </>
             )}
- 
+
             <div style={{display:"flex", gap:10, marginTop:14}}>
               <button style={{flex:1, padding:12, background:"rgba(255,255,255,0.04)",
                 border:"1px solid rgba(255,255,255,0.08)", borderRadius:10,
@@ -1346,7 +1346,7 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
           </div>
         );
       })()}
- 
+
       {confirmed && (
         <div style={{margin:"16px 0", padding:14, background:"rgba(0,230,118,0.08)",
           border:"1px solid rgba(0,230,118,0.2)", borderRadius:12,
@@ -1354,7 +1354,7 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
           ✅ Joker activé !
         </div>
       )}
- 
+
       {/* Barème jokers */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Comment ça marche</div>
@@ -1376,17 +1376,17 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
     </div>
   );
 }
- 
+
 // ─── JOKERS SCREEN ────────────────────────────────────────────────────────────
 function JokersScreen({ playerName, onConfirm, onSkip }) {
   const [selected, setSelected] = useState([]);
   const ref = useRef(null);
- 
+
   const toggle = id => {
     if(selected.includes(id)) setSelected(s=>s.filter(x=>x!==id));
     else if(selected.length<3) setSelected(s=>[...s,id]);
   };
- 
+
   return (
     <div style={{minHeight:"100vh",background:"#04060f",fontFamily:"'Rajdhani',sans-serif",color:"#f0f4ff",paddingBottom:48,position:"relative",zIndex:1}}>
       <style>{`
@@ -1441,25 +1441,25 @@ function JokersScreen({ playerName, onConfirm, onSkip }) {
     </div>
   );
 }
- 
+
 // ─── GRID SCREEN ─────────────────────────────────────────────────────────────
 function GridScreen({player,grilleIdx,results,onSave,onBack}){
   const existingPicks=(player?.grilles||[])[grilleIdx]||null;
   const [picks,setPicks]=useState(existingPicks||{groups:{},ko:{r32:[],qf:[],sf:[],final:[]}});
   const [step,setStep]=useState(0);
- 
+
   const groupKeys=Object.keys(GROUPS);
   const isKO=step===12;
   const grpKey=groupKeys[step];
- 
+
   const setGroupScore=(matchKey,side,val)=>{
     setPicks(p=>({...p,groups:{...p.groups,[matchKey]:{...(p.groups[matchKey]||{h:"",a:""}), [side]:val}}}));
   };
- 
+
   const totalGroupMatches=Object.values(GROUPS).reduce((s,g)=>s+g.matches.length,0);
   const filledGroup=Object.keys(picks.groups||{}).filter(k=>{const sc=picks.groups[k];return sc&&sc.h!==""&&sc.a!=="";}).length;
   const progress=Math.round((filledGroup/totalGroupMatches)*100);
- 
+
   return(
     <div style={styles.app}>
       <Background/>
@@ -1473,10 +1473,10 @@ function GridScreen({player,grilleIdx,results,onSave,onBack}){
           </div>
           <div style={styles.progressPct}>{progress}%</div>
         </div>
- 
+
         {/* Barre de progression */}
         <div style={styles.progressBar}><div style={{...styles.progressFill,width:`${progress}%`}}/></div>
- 
+
         {/* Onglets groupes */}
         <div style={styles.groupTabs}>
           {groupKeys.map((k,i)=>{
@@ -1487,7 +1487,7 @@ function GridScreen({player,grilleIdx,results,onSave,onBack}){
           })}
           <button style={{...styles.groupTab,...(step===12?styles.groupTabOn:{})}} onClick={()=>setStep(12)}>KO</button>
         </div>
- 
+
         {/* Matchs du groupe */}
         {!isKO&&(()=>{
           const {teams,matches}=GROUPS[grpKey];
@@ -1533,7 +1533,7 @@ function GridScreen({player,grilleIdx,results,onSave,onBack}){
             </div>
           );
         })()}
- 
+
         {isKO&&(
           <div style={{padding:"0 14px"}}>
             <div style={styles.sectionTitle}>Phases finales</div>
@@ -1545,7 +1545,7 @@ function GridScreen({player,grilleIdx,results,onSave,onBack}){
             </div>
           </div>
         )}
- 
+
         {/* Navigation */}
         <div style={styles.gridNav}>
           {step>0&&<button style={styles.btnMuted} onClick={()=>setStep(s=>s-1)}>← Préc.</button>}
@@ -1560,7 +1560,7 @@ function GridScreen({player,grilleIdx,results,onSave,onBack}){
     </div>
   );
 }
- 
+
 // ─── STYLES ──────────────────────────────────────────────────────────────────
 const styles = {
   app:{ position:"relative", minHeight:"100vh", maxWidth:480, margin:"0 auto", fontFamily:"'Georgia',serif", color:C.text, overflow:"hidden" },
@@ -1569,40 +1569,40 @@ const styles = {
   bgOverlay:{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(5,8,16,0.6) 0%, rgba(5,8,16,0.3) 40%, rgba(5,8,16,0.85) 100%)" },
   bgGlob1:{ position:"absolute", top:-80, left:-80, width:360, height:360, borderRadius:"50%", background:"radial-gradient(circle,rgba(255,140,0,0.12),transparent 70%)" },
   bgGlob2:{ position:"absolute", bottom:0, right:-60, width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle,rgba(255,215,0,0.08),transparent 70%)" },
- 
+
   content:{ position:"relative", zIndex:1, paddingBottom:80, minHeight:"100vh", overflowY:"auto" },
- 
+
   nav:{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:480, background:"rgba(10,14,26,0.95)", backdropFilter:"blur(20px)", borderTop:"1px solid rgba(255,255,255,0.08)", display:"flex", zIndex:100, padding:"4px 0 calc(4px + env(safe-area-inset-bottom))" },
   navBtn:{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 4px", background:"none", border:"none", color:C.muted, cursor:"pointer", position:"relative", fontFamily:"inherit" },
   navBtnOn:{ color:C.text },
   navIcon:{ fontSize:20, lineHeight:1 },
   navLabel:{ fontSize:10, letterSpacing:1, marginTop:4, textTransform:"uppercase" },
   navPill:{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)", width:32, height:3, background:C.gold, borderRadius:2 },
- 
+
   tabPage:{ padding:"24px 16px 16px" },
   tabTitle:{ fontSize:22, fontWeight:700, margin:"0 0 16px", letterSpacing:1 },
- 
+
   heroSection:{ textAlign:"center", padding:"32px 0 24px" },
   heroEmoji:{ fontSize:56 },
   heroTitle:{ fontSize:48, fontWeight:900, letterSpacing:5, margin:"8px 0 0", lineHeight:1, fontStyle:"italic" },
   heroYear:{ color:C.gold, display:"block", fontSize:60 },
   heroSub:{ color:C.muted, fontSize:11, letterSpacing:2, textTransform:"uppercase", margin:"8px 0 24px" },
   heroNote:{ textAlign:"center", color:C.muted, fontSize:12, marginTop:12 },
- 
+
   playerHeader:{ display:"flex", alignItems:"center", gap:12, padding:"16px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, marginBottom:20 },
   playerAvatar:{ width:48, height:48, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FFD700)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:700, color:"#000", flexShrink:0 },
   playerName:{ fontSize:18, fontWeight:700 },
   playerMeta:{ color:C.muted, fontSize:12, marginTop:2 },
   playerRank:{ marginLeft:"auto", fontSize:22, fontWeight:900, color:C.gold },
- 
+
   scoreHero:{ textAlign:"center", padding:"28px 0", background:"linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,100,0,0.05))", borderRadius:20, border:`1px solid rgba(255,215,0,0.15)`, marginBottom:24 },
   scoreNum:{ fontSize:72, fontWeight:900, color:C.gold, lineHeight:1 },
   scorePts:{ fontSize:18, color:C.muted, letterSpacing:3, textTransform:"uppercase" },
   scoreSub:{ fontSize:11, color:C.muted, marginTop:4 },
- 
+
   section:{ marginBottom:24 },
   sectionTitle:{ fontSize:11, letterSpacing:2, textTransform:"uppercase", color:C.muted, marginBottom:12 },
- 
+
   grilleCard:{ display:"flex", alignItems:"center", padding:"14px 16px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, marginBottom:8, cursor:"pointer", position:"relative", overflow:"hidden" },
   grilleLeft:{ flex:1 },
   grilleName:{ fontSize:15, fontWeight:600 },
@@ -1611,27 +1611,27 @@ const styles = {
   grilleScore:{ fontSize:28, fontWeight:900, color:C.gold, lineHeight:1 },
   grillePts:{ fontSize:11, color:C.muted, textTransform:"uppercase", letterSpacing:1 },
   grilleBest:{ position:"absolute", top:6, right:6, fontSize:8, letterSpacing:1, background:"rgba(255,215,0,0.2)", color:C.gold, padding:"2px 6px", borderRadius:4 },
- 
+
   addGrilleBtn:{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"14px 16px", background:"rgba(255,215,0,0.06)", border:`1px dashed rgba(255,215,0,0.3)`, borderRadius:14, color:C.text, cursor:"pointer", fontFamily:"inherit", textAlign:"left" },
   addGrilleIcon:{ fontSize:24, color:C.gold, fontWeight:300, width:40, height:40, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(255,215,0,0.1)", borderRadius:10, flexShrink:0 },
   addGrilleTxt:{ fontSize:14, fontWeight:600 },
   addGrillePrice:{ fontSize:12, color:C.gold, marginTop:2 },
- 
+
   bareme:{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, overflow:"hidden" },
   baremeRow:{ display:"flex", justifyContent:"space-between", padding:"10px 16px", borderBottom:`1px solid ${C.border}` },
   baremeLabel:{ fontSize:13, color:C.muted },
   baremeVal:{ fontSize:13, fontWeight:700, color:C.gold },
- 
+
   matchsHeader:{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 },
   syncBtn:{ padding:"8px 14px", background:"rgba(68,138,255,0.15)", border:`1px solid rgba(68,138,255,0.3)`, borderRadius:10, color:C.blue, cursor:"pointer", fontSize:13, fontFamily:"inherit" },
   waBtn:{ padding:"8px 14px", background:"rgba(37,211,102,0.15)", border:"1px solid rgba(37,211,102,0.3)", borderRadius:10, color:"#25D366", cursor:"pointer", fontSize:13, fontFamily:"inherit" },
   syncInfo:{ fontSize:11, color:C.muted, marginTop:4 },
- 
+
   groupTabs:{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:16 },
   groupTab:{ padding:"6px 10px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.muted, cursor:"pointer", fontSize:12, fontFamily:"inherit" },
   groupTabOn:{ background:"rgba(255,215,0,0.15)", border:`1px solid rgba(255,215,0,0.5)`, color:C.gold },
   groupTabDone:{ border:`1px solid rgba(0,230,118,0.3)`, color:C.green },
- 
+
   matchCard:{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"14px", marginBottom:10, overflow:"hidden" },
   matchCardPlayed:{ borderColor:"rgba(0,230,118,0.2)", background:"rgba(0,230,118,0.03)" },
   matchCardToday:{ borderColor:"rgba(0,230,118,0.5)", boxShadow:"0 0 16px rgba(0,230,118,0.1)" },
@@ -1662,13 +1662,13 @@ const styles = {
   pronosEmpty:{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}`, fontSize:12, color:C.muted, textAlign:"center", paddingBottom:4 },
   adminScoreInput:{ width:52, height:40, textAlign:"center", background:"rgba(0,230,118,0.08)", border:`1px solid rgba(0,230,118,0.3)`, borderRadius:8, color:C.green, fontSize:18, fontWeight:700, outline:"none", fontFamily:"inherit" },
   adminLoginRow:{ display:"flex", gap:8 },
- 
+
   potCard:{ background:"linear-gradient(135deg,rgba(255,215,0,0.1),rgba(255,100,0,0.08))", border:`1px solid rgba(255,215,0,0.2)`, borderRadius:20, padding:"20px", marginBottom:20, textAlign:"center" },
   potLabel:{ fontSize:11, letterSpacing:2, color:C.muted, textTransform:"uppercase", marginBottom:8 },
   potAmount:{ fontSize:52, fontWeight:900, color:C.gold, lineHeight:1 },
   potPrizes:{ display:"flex", justifyContent:"center", gap:24, marginTop:12 },
   potPrize:{ display:"flex", gap:6, fontSize:16, fontWeight:700 },
- 
+
   rankRow:{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, marginBottom:8 },
   rankRowMe:{ background:"rgba(255,215,0,0.06)", border:`1px solid rgba(255,215,0,0.2)` },
   rankRowFirst:{ background:"rgba(255,215,0,0.08)", border:`1px solid rgba(255,215,0,0.3)` },
@@ -1681,9 +1681,9 @@ const styles = {
   rankScore:{ fontSize:26, fontWeight:900, color:C.gold, lineHeight:1 },
   rankPts:{ fontSize:10, color:C.muted, textTransform:"uppercase", letterSpacing:1 },
   rankPrize:{ fontSize:13, color:C.green, fontWeight:700, marginTop:2 },
- 
+
   empty:{ textAlign:"center", color:C.muted, padding:"40px 20px", fontSize:14 },
- 
+
   // Grid screen
   gridHead:{ display:"flex", alignItems:"center", gap:12, padding:"20px 14px 12px" },
   backBtn:{ background:"none", border:"none", color:C.gold, fontSize:22, cursor:"pointer", padding:"4px 8px", lineHeight:1, fontFamily:"inherit" },
@@ -1692,15 +1692,15 @@ const styles = {
   progressPct:{ marginLeft:"auto", fontSize:13, color:C.gold, fontWeight:700 },
   progressBar:{ margin:"0 14px 12px", height:4, background:"rgba(255,255,255,0.06)", borderRadius:2 },
   progressFill:{ height:"100%", background:`linear-gradient(90deg,${C.gold},${C.green})`, borderRadius:2, transition:"width .4s" },
- 
+
   scoreIn:{ width:44, height:44, textAlign:"center", background:"rgba(255,255,255,0.06)", border:`1px solid ${C.border}`, borderRadius:10, color:C.text, fontSize:20, fontWeight:700, outline:"none", fontFamily:"inherit" },
   koPlaceholder:{ display:"flex", flexDirection:"column", alignItems:"center", padding:"40px 20px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:16 },
   gridNav:{ display:"flex", gap:10, padding:"16px 14px", justifyContent:"flex-end" },
- 
+
   // Shared buttons
   btnGold:{ padding:"14px 20px", background:"linear-gradient(135deg,#FFD700,#FF8C00)", border:"none", borderRadius:12, color:"#0a0e1a", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"inherit" },
   btnMuted:{ padding:"12px 16px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, color:C.text, cursor:"pointer", fontFamily:"inherit", fontSize:14 },
- 
+
   // Onboarding
   obTrophy:{ fontSize:64, textAlign:"center" },
   obTitle:{ fontSize:42, fontWeight:900, letterSpacing:5, textAlign:"center", margin:"8px 0 4px", fontStyle:"italic" },
@@ -1711,11 +1711,9 @@ const styles = {
   fieldErr:{ color:C.red, fontSize:12, marginBottom:8 },
   existingBtn:{ display:"block", width:"100%", padding:"11px 14px", background:"rgba(255,255,255,0.04)", border:`1px solid ${C.border}`, borderRadius:10, color:C.text, cursor:"pointer", fontFamily:"inherit", textAlign:"left", fontSize:14, marginBottom:6 },
 };
- 
- 
-const domNode = document.getElementById('root');
-const root = ReactDOM.createRoot(domNode);
-root.render(React.createElement(App));
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
   </script>
 </body>
 </html>
