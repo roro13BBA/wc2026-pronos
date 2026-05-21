@@ -506,10 +506,14 @@ function App() {
     <JokersScreen
       playerName={pendingPicks?.playerName}
       onConfirm={async jokers=>{
+        isRegistering.current = true; // pause polling
         const updated=[...players];
         const pi=updated.findIndex(p=>p.name===pendingPicks?.playerName);
         updated[pi]={...updated[pi],jokers};
-        await savePlayers(updated);
+        setPlayers(updated);
+        saveLocal(PLAYERS_KEY, updated);
+        await saveShared(PLAYERS_KEY, updated);
+        isRegistering.current = false;
         setTab("score"); setScreen("main");
       }}
       onSkip={()=>{ setTab("score"); setScreen("main"); }}
@@ -548,17 +552,29 @@ function App() {
               setScreen("jokers");
             }}
             onSaveJokers={async (jokers) => {
+              isRegistering.current = true;
               const updated=[...players];
               const pi=updated.findIndex(p=>p.name===currentUser);
-              if(pi>=0){ updated[pi]={...updated[pi],jokers}; await savePlayers(updated); }
+              if(pi>=0){
+                updated[pi]={...updated[pi],jokers};
+                setPlayers(updated);
+                saveLocal(PLAYERS_KEY, updated);
+                await saveShared(PLAYERS_KEY, updated);
+              }
+              isRegistering.current = false;
             }}
             onActivateJoker={async (jokerId, target) => {
+              isRegistering.current = true;
               const updated=[...players];
               const pi=updated.findIndex(p=>p.name===currentUser);
-              if(pi<0) return;
-              const usedJokers={...(updated[pi].usedJokers||{}), [jokerId]: target};
-              updated[pi]={...updated[pi],usedJokers};
-              await savePlayers(updated);
+              if(pi>=0){
+                const usedJokers={...(updated[pi].usedJokers||{}), [jokerId]: target};
+                updated[pi]={...updated[pi],usedJokers};
+                setPlayers(updated);
+                saveLocal(PLAYERS_KEY, updated);
+                await saveShared(PLAYERS_KEY, updated);
+              }
+              isRegistering.current = false;
             }}
           />
         )}
