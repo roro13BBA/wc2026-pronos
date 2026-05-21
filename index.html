@@ -2,17 +2,1719 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <title>Mondial 2026 Pronostics</title>
-  <link rel="manifest" href="/manifest.json"/>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#04060f; }
+    #root { min-height:100vh; }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#04060f;">
+<body>
   <div id="root"></div>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script type="text/babel" src="/app.jsx"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+  <script type="text/babel" data-presets="react">
+import { useState, useEffect, useCallback, useRef } from "react";
+ 
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+const C = {
+  bg: "#0a0e1a",
+  surface: "rgba(255,255,255,0.05)",
+  border: "rgba(255,255,255,0.08)",
+  gold: "#FFD700",
+  goldDim: "rgba(255,215,0,0.15)",
+  green: "#00E676",
+  red: "#FF5252",
+  blue: "#448AFF",
+  text: "#F0F4FF",
+  muted: "#6B7A99",
+  card: "rgba(15,20,40,0.85)",
+};
+ 
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const FLAGS = {
+  "Mexique":"🇲🇽","Corée du Sud":"🇰🇷","Afrique du Sud":"🇿🇦","Turquie":"🇹🇷",
+  "Suisse":"🇨🇭","Canada":"🇨🇦","Qatar":"🇶🇦","Bosnie-Herzégovine":"🇧🇦",
+  "Brésil":"🇧🇷","Maroc":"🇲🇦","Écosse":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","Haïti":"🇭🇹",
+  "États-Unis":"🇺🇸","Australie":"🇦🇺","Paraguay":"🇵🇾","Rép. tchèque":"🇨🇿",
+  "Allemagne":"🇩🇪","Côte d'Ivoire":"🇨🇮","Équateur":"🇪🇨","Curaçao":"🇨🇼",
+  "Pays-Bas":"🇳🇱","Japon":"🇯🇵","Tunisie":"🇹🇳","Suède":"🇸🇪",
+  "Belgique":"🇧🇪","Iran":"🇮🇷","Égypte":"🇪🇬","Nouvelle-Zélande":"🇳🇿",
+  "Espagne":"🇪🇸","Uruguay":"🇺🇾","Arabie Saoudite":"🇸🇦","Cap-Vert":"🇨🇻",
+  "France":"🇫🇷","Sénégal":"🇸🇳","Norvège":"🇳🇴","Irak":"🇮🇶",
+  "Argentine":"🇦🇷","Autriche":"🇦🇹","Algérie":"🇩🇿","Jordanie":"🇯🇴",
+  "Portugal":"🇵🇹","Colombie":"🇨🇴","Ouzbékistan":"🇺🇿","RD Congo":"🇨🇩",
+  "Angleterre":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Croatie":"🇭🇷","Ghana":"🇬🇭","Panama":"🇵🇦",
+};
+const F = t => FLAGS[t] || "🏳️";
+ 
+const FIFA_RANK = {
+  "Argentine":1,"France":2,"Espagne":3,"Angleterre":4,"Brésil":5,"Belgique":6,
+  "Portugal":7,"Pays-Bas":8,"Allemagne":9,"Croatie":10,"Maroc":12,"Uruguay":13,
+  "États-Unis":14,"Mexique":15,"Suisse":16,"Japon":17,"Colombie":18,
+  "Corée du Sud":20,"Sénégal":21,"Autriche":22,"Iran":23,"Turquie":24,
+  "Écosse":25,"Norvège":26,"Équateur":27,"Australie":28,"Égypte":29,"Canada":30,
+  "Qatar":31,"Côte d'Ivoire":32,"Algérie":33,"Paraguay":34,"Ghana":35,"Cap-Vert":36,
+  "Tunisie":37,"Rép. tchèque":38,"Suède":39,"Bosnie-Herzégovine":40,
+  "Afrique du Sud":41,"Irak":42,"Panama":43,"RD Congo":44,"Jordanie":45,
+  "Ouzbékistan":46,"Curaçao":47,"Arabie Saoudite":48,"Haïti":50,"Nouvelle-Zélande":55,
+};
+ 
+// Données supplémentaires : force réelle basée sur performances récentes 2024-2025
+// (qualifs CDM, Ligue des Nations, matchs amicaux de référence)
+const TEAM_STRENGTH = {
+  "Argentine":96,"France":94,"Espagne":93,"Angleterre":91,"Brésil":90,
+  "Belgique":85,"Portugal":88,"Pays-Bas":86,"Allemagne":87,"Croatie":82,
+  "Maroc":80,"Uruguay":81,"États-Unis":75,"Mexique":74,"Suisse":78,
+  "Japon":77,"Colombie":76,"Corée du Sud":72,"Sénégal":73,"Autriche":71,
+  "Iran":65,"Turquie":70,"Écosse":69,"Norvège":74,"Équateur":68,
+  "Australie":67,"Égypte":66,"Canada":72,"Qatar":58,"Côte d'Ivoire":69,
+  "Algérie":67,"Paraguay":64,"Ghana":63,"Cap-Vert":62,"Tunisie":64,
+  "Rép. tchèque":68,"Suède":70,"Bosnie-Herzégovine":63,"Afrique du Sud":60,
+  "Irak":57,"Panama":58,"RD Congo":59,"Jordanie":56,"Ouzbékistan":55,
+  "Curaçao":52,"Arabie Saoudite":60,"Haïti":50,"Nouvelle-Zélande":54,
+};
+ 
+function calcOdds(tH, tA) {
+  const sH = TEAM_STRENGTH[tH] || 55;
+  const sA = TEAM_STRENGTH[tA] || 55;
+ 
+  // Force relative avec avantage domicile (~+5% en CDM)
+  const fH = Math.pow(sH / 100, 2.5) * 1.08;
+  const fA = Math.pow(sA / 100, 2.5);
+ 
+  // Probabilité de nul selon l'écart de niveau
+  // Statistique réelle CDM : ~22-26% de nuls en phase de groupes
+  // Plus l'écart est faible → plus de nuls
+  const diff = Math.abs(sH - sA);
+  const drawProb = diff < 5  ? 0.27  // très équilibrés → beaucoup de nuls
+                : diff < 12 ? 0.25
+                : diff < 20 ? 0.23
+                : diff < 30 ? 0.20
+                : 0.16; // gros écart → peu de nuls
+ 
+  const tot = fH + fA;
+  const pH = (fH / tot) * (1 - drawProb);
+  const pA = (fA / tot) * (1 - drawProb);
+  const pN = drawProb;
+ 
+  // Marge bookmaker 7%
+  const m = 1.07;
+  const raw = p => Math.max(1.04, Math.round((1 / (p * m)) * 100) / 100);
+  return { h: raw(pH), n: raw(pN), a: raw(pA) };
+}
+ 
+// matches: [idxDomicile, idxExtérieur], schedule: "JJ/MM HH:MM", venue: "Stade, Ville"
+const GROUPS = {
+  A:{teams:["Mexique","Corée du Sud","Afrique du Sud","Turquie"],matches:[
+    [0,2,{d:"11/06",h:"21:00",v:"Azteca, Mexico"}],
+    [1,3,{d:"12/06",h:"04:00",v:"Akron, Zapopan"}],
+    [2,3,{d:"18/06",h:"18:00",v:"Mercedes-Benz, Atlanta"}],
+    [0,1,{d:"19/06",h:"03:00",v:"Akron, Zapopan"}],
+    [3,0,{d:"25/06",h:"03:00",v:"Azteca, Mexico"}],
+    [2,1,{d:"25/06",h:"03:00",v:"BBVA, Guadalupe"}],
+  ]},
+  B:{teams:["Suisse","Canada","Qatar","Bosnie-Herzégovine"],matches:[
+    [1,3,{d:"12/06",h:"21:00",v:"BMO Field, Toronto"}],
+    [2,0,{d:"13/06",h:"21:00",v:"Levi's Stadium, Santa Clara"}],
+    [0,3,{d:"18/06",h:"21:00",v:"SoFi Stadium, LA"}],
+    [1,2,{d:"19/06",h:"00:00",v:"BC Place, Vancouver"}],
+    [0,1,{d:"24/06",h:"21:00",v:"BC Place, Vancouver"}],
+    [3,2,{d:"24/06",h:"21:00",v:"Lumen Field, Seattle"}],
+  ]},
+  C:{teams:["Brésil","Maroc","Écosse","Haïti"],matches:[
+    [0,1,{d:"14/06",h:"00:00",v:"MetLife, New York"}],
+    [3,2,{d:"14/06",h:"03:00",v:"Gillette Stadium, Boston"}],
+    [0,3,{d:"20/06",h:"00:00",v:"Gillette Stadium, Boston"}],
+    [2,1,{d:"20/06",h:"03:00",v:"Lincoln Financial, Philadelphie"}],
+    [2,0,{d:"25/06",h:"00:00",v:"Hard Rock Stadium, Miami"}],
+    [1,3,{d:"25/06",h:"00:00",v:"Mercedes-Benz, Atlanta"}],
+  ]},
+  D:{teams:["États-Unis","Australie","Paraguay","Rép. tchèque"],matches:[
+    [0,2,{d:"13/06",h:"03:00",v:"SoFi Stadium, LA"}],
+    [1,3,{d:"14/06",h:"06:00",v:"BC Place, Vancouver"}],
+    [3,2,{d:"20/06",h:"06:00",v:"BC Place, Vancouver"}],
+    [0,1,{d:"20/06",h:"21:00",v:"AT&T Stadium, Dallas"}],
+    [2,1,{d:"25/06",h:"21:00",v:"Gillette Stadium, Boston"}],
+    [0,3,{d:"25/06",h:"21:00",v:"Levi's Stadium, Santa Clara"}],
+  ]},
+  E:{teams:["Allemagne","Côte d'Ivoire","Équateur","Curaçao"],matches:[
+    [0,1,{d:"14/06",h:"21:00",v:"MetLife, New York"}],
+    [2,3,{d:"15/06",h:"01:00",v:"Lincoln Financial, Philadelphie"}],
+    [0,2,{d:"21/06",h:"21:00",v:"AT&T Stadium, Dallas"}],
+    [1,3,{d:"22/06",h:"00:00",v:"Levi's Stadium, Santa Clara"}],
+    [3,1,{d:"25/06",h:"22:00",v:"Lincoln Financial, Philadelphie"}],
+    [2,0,{d:"25/06",h:"22:00",v:"Hard Rock Stadium, Miami"}],
+  ]},
+  F:{teams:["Pays-Bas","Japon","Tunisie","Suède"],matches:[
+    [0,1,{d:"15/06",h:"21:00",v:"Lumen Field, Seattle"}],
+    [2,3,{d:"15/06",h:"21:00",v:"BC Place, Vancouver"}],
+    [0,2,{d:"21/06",h:"03:00",v:"Levi's Stadium, Santa Clara"}],
+    [1,3,{d:"21/06",h:"18:00",v:"AT&T Stadium, Dallas"}],
+    [3,0,{d:"26/06",h:"00:00",v:"SoFi Stadium, LA"}],
+    [2,1,{d:"26/06",h:"00:00",v:"Rose Bowl, LA"}],
+  ]},
+  G:{teams:["Belgique","Iran","Égypte","Nouvelle-Zélande"],matches:[
+    [0,1,{d:"15/06",h:"03:00",v:"Levi's Stadium, Santa Clara"}],
+    [2,3,{d:"16/06",h:"03:00",v:"Rose Bowl, LA"}],
+    [0,2,{d:"22/06",h:"21:00",v:"Lincoln Financial, Philadelphie"}],
+    [1,3,{d:"22/06",h:"21:00",v:"MetLife, New York"}],
+    [3,0,{d:"26/06",h:"05:00",v:"BC Place, Vancouver"}],
+    [2,1,{d:"26/06",h:"05:00",v:"BMO Field, Toronto"}],
+  ]},
+  H:{teams:["Espagne","Uruguay","Arabie Saoudite","Cap-Vert"],matches:[
+    [0,1,{d:"16/06",h:"21:00",v:"Hard Rock Stadium, Miami"}],
+    [2,3,{d:"17/06",h:"00:00",v:"Rose Bowl, LA"}],
+    [0,2,{d:"22/06",h:"03:00",v:"Lumen Field, Seattle"}],
+    [1,3,{d:"23/06",h:"00:00",v:"SoFi Stadium, LA"}],
+    [3,0,{d:"26/06",h:"22:00",v:"AT&T Stadium, Dallas"}],
+    [2,1,{d:"26/06",h:"22:00",v:"Hard Rock Stadium, Miami"}],
+  ]},
+  I:{teams:["France","Sénégal","Norvège","Irak"],matches:[
+    [0,1,{d:"16/06",h:"00:00",v:"MetLife, New York"}],
+    [2,3,{d:"16/06",h:"03:00",v:"Gillette Stadium, Boston"}],
+    [0,2,{d:"22/06",h:"00:00",v:"AT&T Stadium, Dallas"}],
+    [1,3,{d:"22/06",h:"03:00",v:"Lumen Field, Seattle"}],
+    [3,0,{d:"27/06",h:"00:00",v:"Rose Bowl, LA"}],
+    [2,1,{d:"27/06",h:"00:00",v:"SoFi Stadium, LA"}],
+  ]},
+  J:{teams:["Argentine","Autriche","Algérie","Jordanie"],matches:[
+    [0,1,{d:"17/06",h:"03:00",v:"MetLife, New York"}],
+    [2,3,{d:"17/06",h:"21:00",v:"Hard Rock Stadium, Miami"}],
+    [0,2,{d:"23/06",h:"03:00",v:"Rose Bowl, LA"}],
+    [1,3,{d:"23/06",h:"21:00",v:"Gillette Stadium, Boston"}],
+    [3,0,{d:"27/06",h:"21:00",v:"Mercedes-Benz, Atlanta"}],
+    [2,1,{d:"27/06",h:"21:00",v:"Lincoln Financial, Philadelphie"}],
+  ]},
+  K:{teams:["Portugal","Colombie","Ouzbékistan","RD Congo"],matches:[
+    [0,1,{d:"17/06",h:"21:00",v:"Levi's Stadium, Santa Clara"}],
+    [2,3,{d:"18/06",h:"00:00",v:"BMO Field, Toronto"}],
+    [0,2,{d:"23/06",h:"21:00",v:"MetLife, New York"}],
+    [1,3,{d:"24/06",h:"00:00",v:"Hard Rock Stadium, Miami"}],
+    [3,0,{d:"27/06",h:"03:00",v:"Lumen Field, Seattle"}],
+    [2,1,{d:"27/06",h:"03:00",v:"AT&T Stadium, Dallas"}],
+  ]},
+  L:{teams:["Angleterre","Croatie","Ghana","Panama"],matches:[
+    [0,1,{d:"18/06",h:"03:00",v:"Gillette Stadium, Boston"}],
+    [2,3,{d:"18/06",h:"03:00",v:"BMO Field, Toronto"}],
+    [0,2,{d:"23/06",h:"03:00",v:"SoFi Stadium, LA"}],
+    [1,3,{d:"24/06",h:"03:00",v:"MetLife, New York"}],
+    [3,0,{d:"27/06",h:"22:00",v:"Gillette Stadium, Boston"}],
+    [2,1,{d:"27/06",h:"22:00",v:"BMO Field, Toronto"}],
+  ]},
+};
+ 
+const PTS = {groupGoal:1,groupResult:2,groupExact:5,r32:3,qfWin:5,sfWin:8,finalWin:15,finalExact:25};
+const MISE=5, MAX_GRILLES=3;
+ 
+const JOKERS_DATA = [
+  { id:"double", name:"JOKER X2", sub:"MISE DOUBLE", icon:"⚡", rating:"X2",
+    accent:"#C9A84C", glow:"rgba(201,168,76,0.7)",
+    desc:"Double les points d'un match de ton choix. À activer avant le coup d'envoi.",
+    stats:[["EFFET","×2 PTS"],["CIBLE","1 MATCH"],["USAGE","1 FOIS"]] },
+  { id:"journee", name:"FULL DAY", sub:"JOURNÉE ×2", icon:"🌪️", rating:"FD",
+    accent:"#c084fc", glow:"rgba(192,132,252,0.7)",
+    desc:"Double tous tes points pour une journée entière. Risqué mais dévastateur.",
+    stats:[["EFFET","×2 PTS"],["CIBLE","1 JOUR"],["USAGE","1 FOIS"]] },
+  { id:"sniper", name:"SNIPER", sub:"SCORE FINALE", icon:"🎯", rating:"50",
+    accent:"#f87171", glow:"rgba(248,113,113,0.7)",
+    desc:"Pronostique le score exact de la finale avant le tournoi. Réussite = 50 pts.",
+    stats:[["GAIN","50 PTS"],["CIBLE","FINALE"],["USAGE","1 FOIS"]] },
+  { id:"bouclier", name:"BOUCLIER", sub:"PROTECTION", icon:"🛡️", rating:"GK",
+    accent:"#38bdf8", glow:"rgba(56,189,248,0.7)",
+    desc:"Annule ton pire résultat. Ce match comptera 0 au lieu de te pénaliser.",
+    stats:[["EFFET","ANNULE"],["CIBLE","1 MATCH"],["USAGE","1 FOIS"]] },
+  { id:"temeraire", name:"TÉMÉRAIRE", sub:"GROS UPSET", icon:"💥", rating:"X5",
+    accent:"#34d399", glow:"rgba(52,211,153,0.7)",
+    desc:"Parie sur une énorme surprise. Si ça arrive, tes points sont multipliés par 5.",
+    stats:[["EFFET","×5 PTS"],["CIBLE","UPSET"],["USAGE","1 FOIS"]] },
+];
+const PLAYERS_KEY="wc2026_players_v4", RESULTS_KEY="wc2026_results_v4", SYNC_KEY="wc2026_lastsync";
+ 
+function scoreResult(h,a){if(h>a)return"H";if(h<a)return"A";return"N";}
+ 
+function computeScore(picks,results){
+  let pts=0;
+  Object.entries(GROUPS).forEach(([grp,{teams,matches}])=>{
+    matches.forEach((matchDef,mIdx)=>{
+      const key=`${grp}_${mIdx}`;
+      const p=picks?.groups?.[key], r=results?.groups?.[key];
+      if(!p||!r||p.h===""||p.a===""||r.h===""||r.a==="")return;
+      const pH=parseInt(p.h),pA=parseInt(p.a),rH=parseInt(r.h),rA=parseInt(r.a);
+      if(isNaN(pH)||isNaN(pA)||isNaN(rH)||isNaN(rA))return;
+      if(pH===rH&&pA===rA){pts+=PTS.groupExact;}
+      else if(scoreResult(pH,pA)===scoreResult(rH,rA)){pts+=PTS.groupResult;}
+      if(pH===rH||pA===rA)pts+=PTS.groupGoal;
+    });
+  });
+  return pts;
+}
+ 
+// ─── SYNC SCORES VIA CLAUDE API ───────────────────────────────────────────────
+async function fetchScoresFromClaude(results) {
+  const matchList = Object.entries(GROUPS).flatMap(([grp,{teams,matches}]) =>
+    matches.map(([i,j],mIdx)=>`${grp}_${mIdx}: ${teams[i]} vs ${teams[j]}`)
+  ).join("\n");
+ 
+  const prompt = `Coupe du Monde 2026 (11 juin - 19 juillet 2026, USA/Canada/Mexique).
+Cherche sur le web les scores OFFICIELS ET DÉFINITIFS des matchs déjà joués.
+ 
+Matchs disponibles:
+${matchList}
+ 
+Réponds UNIQUEMENT avec du JSON valide, sans markdown, sans texte:
+{"groups":{"A_0":{"h":2,"a":1},"B_2":{"h":0,"a":0}}}
+ 
+N'inclus QUE les matchs terminés. Si aucun match joué: {"groups":{}}`;
+ 
+  const resp = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      model:"claude-sonnet-4-20250514",
+      max_tokens:1000,
+      tools:[{type:"web_search_20250305",name:"web_search"}],
+      messages:[{role:"user",content:prompt}]
+    })
+  });
+  const data = await resp.json();
+  const text = data.content.filter(b=>b.type==="text").map(b=>b.text).join("");
+  const clean = text.replace(/```json|```/g,"").trim();
+  const parsed = JSON.parse(clean);
+  if(parsed.groups){
+    return {...results, groups:{...(results.groups||{}), ...parsed.groups}};
+  }
+  return results;
+}
+ 
+ 
+// ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://rwpmwepmfeqkqumimimo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_YvXu4AT2SIcBEMHPOGYPLQ_ipDO7tc0";
+ 
+async function dbGet(key) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/data?key=eq.${key}&select=value`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+    });
+    const rows = await res.json();
+    return rows.length > 0 ? JSON.parse(rows[0].value) : null;
+  } catch(e) { return null; }
+}
+ 
+async function dbSet(key, value) {
+  try {
+    const body = JSON.stringify({ key, value: JSON.stringify(value) });
+    // Upsert
+    await fetch(`${SUPABASE_URL}/rest/v1/data`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+      },
+      body
+    });
+  } catch(e) {}
+}
+ 
+function loadLocal(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e) { return fallback; }
+}
+function saveLocal(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {}
+}
+async function loadShared(key, fallback) {
+  const r = await dbGet(key);
+  return r !== null ? r : fallback;
+}
+async function saveShared(key, value) {
+  await dbSet(key, value);
+}
+async function saveAll(key, value) {
+  saveLocal(key, value);
+  await dbSet(key, value);
+}
+async function loadBest(key, fallback) {
+  const local = loadLocal(key, null);
+  const shared = await dbGet(key);
+  if (shared !== null) {
+    if (Array.isArray(shared) && Array.isArray(local) && local.length > shared.length) {
+      await dbSet(key, local);
+      return local;
+    }
+    saveLocal(key, shared);
+    return shared;
+  }
+  return local !== null ? local : fallback;
+}
+ 
+// ─── APP ──────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [players, setPlayers] = useState(() => loadLocal(PLAYERS_KEY, []));
+  const [results, setResults] = useState(() => loadLocal(RESULTS_KEY, {groups:{},ko:{r32:[],qf:[],sf:[],final:[]}}));
+  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState("score");
+  const [screen, setScreen] = useState("main"); // main | onboarding | grid | jokers
+  const [pendingPicks, setPendingPicks] = useState(null); // grille en attente avant choix jokers
+  const isRegistering = useRef(false); // bloque le polling pendant inscription
+  const [currentUser, setCurrentUser] = useState(() => { try { return localStorage.getItem('wc2026_user') || null; } catch(e) { return null; } });
+  const [editGrille, setEditGrille] = useState({playerName:null,idx:0});
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
+  const syncRef = useRef(false);
+ 
+  // Sync initiale depuis le stockage partagé (sans bloquer l'UI)
+  useEffect(()=>{
+    (async()=>{
+      const p = await loadBest(PLAYERS_KEY, []);
+      const r = await loadBest(RESULTS_KEY, {groups:{},ko:{r32:[],qf:[],sf:[],final:[]}});
+      const ls = await loadShared(SYNC_KEY, null);
+      setPlayers(p); setResults(r); setLastSync(ls);
+    })();
+  },[]);
+ 
+  // Polling toutes les 20s — sync depuis partagé
+  // On utilise une ref pour accéder au state players le plus récent sans dépendance
+  const playersRef = useRef(players);
+  useEffect(()=>{ playersRef.current = players; }, [players]);
+ 
+  useEffect(()=>{
+    const id = setInterval(async()=>{
+      try {
+        const p = await dbGet(PLAYERS_KEY);
+        const r = await dbGet(RESULTS_KEY);
+        if(p !== null && !isRegistering.current) {
+          // Garde la version avec le plus de joueurs (la plus récente)
+          const local = playersRef.current;
+          if(p.length >= local.length) {
+            saveLocal(PLAYERS_KEY, p);
+            setPlayers(p);
+          } else {
+            // Le local est plus récent, on remonte vers le partagé
+            saveShared(PLAYERS_KEY, local);
+          }
+        }
+        if(r !== null) { saveLocal(RESULTS_KEY, r); setResults(r); }
+      } catch(e) {}
+    }, 20000);
+    return ()=>clearInterval(id);
+  },[]);
+ 
+  // Auto-sync scores toutes les 30 min (une seule instance à la fois)
+  useEffect(()=>{
+    const doSync = async () => {
+      if(syncRef.current) return;
+      const ls = await loadShared(SYNC_KEY, null);
+      const now = Date.now();
+      if(ls && now - ls < 25*60*1000) return; // moins de 25 min depuis dernier sync
+      syncRef.current = true;
+      try {
+        const r = await loadShared(RESULTS_KEY,{groups:{},ko:{r32:[],qf:[],sf:[],final:[]}});
+        const updated = await fetchScoresFromClaude(r);
+        await saveShared(RESULTS_KEY, updated);
+        await saveShared(SYNC_KEY, now);
+        setResults(updated); setLastSync(now);
+      } catch(e){}
+      syncRef.current = false;
+    };
+    doSync();
+    const id = setInterval(doSync, 30*60*1000);
+    return ()=>clearInterval(id);
+  },[]);
+ 
+  const savePlayers = async p => { setPlayers(p); await saveAll(PLAYERS_KEY, p); };
+ 
+  const login = (name) => {
+    setCurrentUser(name);
+    try { localStorage.setItem('wc2026_user', name); } catch(e) {}
+  };
+  const saveResults = async r => { setResults(r); await saveAll(RESULTS_KEY, r); };
+ 
+  const manualSync = async () => {
+    if(syncRef.current) return;
+    syncRef.current = true;
+    try {
+      const updated = await fetchScoresFromClaude(results);
+      const now = Date.now();
+      await saveShared(RESULTS_KEY, updated);
+      await saveShared(SYNC_KEY, now);
+      setResults(updated); setLastSync(now);
+    } catch(e){}
+    syncRef.current = false;
+  };
+ 
+  const curPlayerObj = players.find(p=>p.name===currentUser);
+ 
+  // Loader supprimé — données chargées depuis localStorage immédiatement
+ 
+  if(screen==="onboarding") return (
+    <Onboarding players={players} onJoin={async name=>{
+      isRegistering.current = true; // pause polling
+      const existing = players.find(p=>p.name.toLowerCase()===name.toLowerCase());
+      if(existing){
+        login(existing.name);
+        setScreen("main");
+        isRegistering.current = false;
+        return;
+      }
+      const newPlayer = {name, grilles:[]};
+      const updated=[...players, newPlayer];
+      setPlayers(updated);
+      saveLocal(PLAYERS_KEY, updated); // local immédiat
+      await saveShared(PLAYERS_KEY, updated); // partagé
+      login(name);
+      setEditGrille({playerName:name,idx:0});
+      setScreen("grid");
+      // Reprend le polling après 10s (le temps de remplir la grille)
+      setTimeout(()=>{ isRegistering.current = false; }, 10000);
+    }} />
+  );
+ 
+  if(screen==="grid") return (
+    <GridScreen
+      player={players.find(p=>p.name===editGrille.playerName)}
+      grilleIdx={editGrille.idx}
+      results={results}
+      onSave={async picks=>{
+        const updated=[...players];
+        const pi=updated.findIndex(p=>p.name===editGrille.playerName);
+        const g=[...(updated[pi].grilles||[])];
+        g[editGrille.idx]=picks;
+        updated[pi]={...updated[pi],grilles:g};
+        await savePlayers(updated);
+        // Si c'est la première grille et pas encore de jokers → écran jokers
+        const hasJokers = updated[pi].jokers && updated[pi].jokers.length > 0;
+        if(!hasJokers && editGrille.idx === 0) {
+          setPendingPicks({playerName: editGrille.playerName});
+          setScreen("jokers");
+        } else {
+          setTab("score"); setScreen("main");
+        }
+      }}
+      onBack={()=>setScreen("main")}
+    />
+  );
+ 
+  if(screen==="jokers") return (
+    <JokersScreen
+      playerName={pendingPicks?.playerName}
+      onConfirm={async jokers=>{
+        const updated=[...players];
+        const pi=updated.findIndex(p=>p.name===pendingPicks?.playerName);
+        updated[pi]={...updated[pi],jokers};
+        await savePlayers(updated);
+        setTab("score"); setScreen("main");
+      }}
+      onSkip={()=>{ setTab("score"); setScreen("main"); }}
+    />
+  );
+ 
+  return (
+    <div style={styles.app}>
+      <Background />
+      <div style={styles.content}>
+        {tab==="score" && (
+          <ScoreTab
+            currentUser={currentUser}
+            players={players}
+            results={results}
+            onLogin={()=>setScreen("onboarding")}
+            onAddGrille={idx=>{ setEditGrille({playerName:currentUser,idx}); setScreen("grid"); }}
+            onEditGrille={(name,idx)=>{ setEditGrille({playerName:name,idx}); setScreen("grid"); }}
+          />
+        )}
+        {tab==="matchs" && (
+          <MatchsTab results={results} lastSync={lastSync} isAdmin={isAdmin} players={players}
+            onSync={manualSync} onResultChange={saveResults}
+            onAdminLogin={pwd=>{ if(pwd==="wc2026admin")setIsAdmin(true); }} />
+        )}
+        {tab==="classement" && (
+          <ClassementTab players={players} results={results} currentUser={currentUser} />
+        )}
+        {tab==="jokers" && (
+          <JokersTab
+            currentUser={currentUser}
+            players={players}
+            results={results}
+            onChooseJokers={()=>{
+              setPendingPicks({playerName:currentUser});
+              setScreen("jokers");
+            }}
+            onSaveJokers={async (jokers) => {
+              const updated=[...players];
+              const pi=updated.findIndex(p=>p.name===currentUser);
+              if(pi>=0){ updated[pi]={...updated[pi],jokers}; await savePlayers(updated); }
+            }}
+            onActivateJoker={async (jokerId, target) => {
+              const updated=[...players];
+              const pi=updated.findIndex(p=>p.name===currentUser);
+              if(pi<0) return;
+              const usedJokers={...(updated[pi].usedJokers||{}), [jokerId]: target};
+              updated[pi]={...updated[pi],usedJokers};
+              await savePlayers(updated);
+            }}
+          />
+        )}
+      </div>
+      <BottomNav tab={tab} setTab={setTab} />
+    </div>
+  );
+}
+ 
+// ─── BACKGROUND ───────────────────────────────────────────────────────────────
+function Background() {
+  return (
+    <div style={styles.bg}>
+      {/* Photo stade + overlay sombre pour lisibilité */}
+      <div style={styles.bgPhoto} />
+      <div style={styles.bgOverlay} />
+      <div style={styles.bgGlob1} />
+      <div style={styles.bgGlob2} />
+    </div>
+  );
+}
+ 
+// ─── BOTTOM NAV ───────────────────────────────────────────────────────────────
+function BottomNav({tab,setTab}) {
+  const items=[
+    {id:"score",icon:"⚽",label:"Mon score"},
+    {id:"matchs",icon:"📅",label:"Matchs"},
+    {id:"classement",icon:"🏆",label:"Classement"},
+    {id:"jokers",icon:"🃏",label:"Jokers"},
+  ];
+  return (
+    <nav style={styles.nav}>
+      {items.map(({id,icon,label})=>(
+        <button key={id} style={{...styles.navBtn,...(tab===id?styles.navBtnOn:{})}} onClick={()=>setTab(id)}>
+          <span style={styles.navIcon}>{icon}</span>
+          <span style={styles.navLabel}>{label}</span>
+          {tab===id && <div style={styles.navPill}/>}
+        </button>
+      ))}
+    </nav>
+  );
+}
+ 
+// ─── LOADER ───────────────────────────────────────────────────────────────────
+function Loader(){
+  return(
+    <div style={{...styles.app,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <Background/>
+      <div style={{textAlign:"center",position:"relative",zIndex:1}}>
+        <div style={{fontSize:60,animation:"spin 2s linear infinite"}}>⚽</div>
+        <p style={{color:C.muted,letterSpacing:3,fontSize:12,marginTop:16}}>CHARGEMENT</p>
+        <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </div>
+  );
+}
+ 
+// ─── ONBOARDING ───────────────────────────────────────────────────────────────
+function Onboarding({players,onJoin}){
+  const [name,setName]=useState("");
+  const [err,setErr]=useState("");
+  return(
+    <div style={styles.app}>
+      <Background/>
+      <div style={{...styles.content,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 20px"}}>
+        <div style={styles.obTrophy}>🏆</div>
+        <h1 style={styles.obTitle}>MONDIAL 2026</h1>
+        <p style={styles.obSub}>Pronostics entre potes · 5€/grille</p>
+        <div style={styles.obCard}>
+          <label style={styles.fieldLabel}>Ton pseudo</label>
+          <input style={styles.fieldInput} placeholder="Ex: Mbappé_fan" value={name}
+            onChange={e=>{setName(e.target.value);setErr("");}}
+            onKeyDown={e=>e.key==="Enter"&&onJoin(name.trim())} autoFocus/>
+          {err&&<p style={styles.fieldErr}>{err}</p>}
+          <button style={styles.btnGold} onClick={()=>{
+            if(!name.trim()){setErr("Entre ton pseudo !");return;}
+            onJoin(name.trim());
+          }}>Rejoindre →</button>
+          {players.length>0&&(
+            <div style={{marginTop:20}}>
+              <p style={{...styles.fieldLabel,marginBottom:8}}>Déjà inscrit ?</p>
+              {players.map(p=>(
+                <button key={p.name} style={styles.existingBtn} onClick={()=>onJoin(p.name)}>
+                  {p.name} · {(p.grilles||[]).length} grille(s)
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+ 
+// ─── SCORE TAB ────────────────────────────────────────────────────────────────
+function ScoreTab({currentUser,players,results,onLogin,onAddGrille,onEditGrille}){
+  const player = players.find(p=>p.name===currentUser);
+ 
+  if(!currentUser||!player) return(
+    <div style={styles.tabPage}>
+      <div style={styles.heroSection}>
+        <div style={styles.heroEmoji}>⚽</div>
+        <h1 style={styles.heroTitle}>MONDIAL<br/><span style={styles.heroYear}>2026</span></h1>
+        <p style={styles.heroSub}>11 juin – 19 juillet · USA · Canada · Mexique</p>
+      </div>
+      <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:8}}>
+        <button style={{...styles.btnGold, width:'80%'}} onClick={onLogin}>Rejoindre le tournoi →</button>
+        <p style={styles.heroNote}>{players.length} joueur(s) inscrit(s)</p>
+      </div>
+    </div>
+  );
+ 
+  const grilles = player.grilles||[];
+  const scores = grilles.map(g=>g?computeScore(g,results):0);
+  const best = scores.length>0?Math.max(...scores):0;
+  const totalMise = grilles.length*MISE;
+  const canAdd = grilles.length<MAX_GRILLES;
+ 
+  // Calcul rang
+  const allScored = players.filter(p=>(p.grilles||[]).length>0)
+    .map(p=>{const s=(p.grilles||[]).map(g=>g?computeScore(g,results):0);return{name:p.name,best:s.length>0?Math.max(...s):0};})
+    .sort((a,b)=>b.best-a.best);
+  const rank = allScored.findIndex(p=>p.name===currentUser)+1;
+ 
+  return(
+    <div style={styles.tabPage}>
+      {/* Header joueur */}
+      <div style={styles.playerHeader}>
+        <div style={styles.playerAvatar}>{currentUser.charAt(0).toUpperCase()}</div>
+        <div>
+          <div style={styles.playerName}>{currentUser}</div>
+          <div style={styles.playerMeta}>{totalMise}€ misés · {grilles.length} grille(s)</div>
+        </div>
+        {rank>0&&<div style={styles.playerRank}>#{rank}</div>}
+      </div>
+ 
+      {/* Score principal */}
+      <div style={styles.scoreHero}>
+        <div style={styles.scoreNum}>{best}</div>
+        <div style={styles.scorePts}>points</div>
+        <div style={styles.scoreSub}>meilleur score</div>
+      </div>
+ 
+      {/* Grilles */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Mes grilles</div>
+        {grilles.map((g,i)=>(
+          <div key={i} style={styles.grilleCard} onClick={()=>onEditGrille(currentUser,i)}>
+            <div style={styles.grilleLeft}>
+              <div style={styles.grilleName}>Grille {i+1}</div>
+              <div style={styles.grilleStatus}>{g?"✅ Remplie":"⏳ À compléter"}</div>
+            </div>
+            <div style={styles.grilleRight}>
+              <div style={styles.grilleScore}>{scores[i]}</div>
+              <div style={styles.grillePts}>pts</div>
+            </div>
+            {i===scores.indexOf(Math.max(...scores))&&grilles.length>1&&(
+              <div style={styles.grilleBest}>MEILLEURE</div>
+            )}
+          </div>
+        ))}
+        {canAdd&&(
+          <button style={styles.addGrilleBtn} onClick={()=>onAddGrille(grilles.length)}>
+            <span style={styles.addGrilleIcon}>+</span>
+            <div>
+              <div style={styles.addGrilleTxt}>Ajouter une grille</div>
+              <div style={styles.addGrillePrice}>5€ de plus</div>
+            </div>
+          </button>
+        )}
+      </div>
+ 
+      {/* Barème */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Barème des points</div>
+        <div style={styles.bareme}>
+          {[
+            ["🎯 Score exact","5 pts"],["✅ Bon résultat","2 pts"],["⚽ Bon nb de buts","1 pt"],
+            ["1/32 qualifié","3 pts"],["1/4 qualifié","5 pts"],["1/2 qualifié","8 pts"],
+            ["🏆 Champion","15 pts"],["🎯 Score exact finale","25 pts"],
+          ].map(([l,v])=>(
+            <div key={l} style={styles.baremeRow}>
+              <span style={styles.baremeLabel}>{l}</span>
+              <span style={styles.baremeVal}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+ 
+// ─── MATCHS TAB ───────────────────────────────────────────────────────────────
+function generateWhatsAppRecap(grp, results, players) {
+  const {teams, matches} = GROUPS[grp];
+  const lines = [`⚽ *RÉCAP GROUPE ${grp} - CDM 2026*\n`];
+ 
+  let hasAnyResult = false;
+ 
+  matches.forEach((matchDef, mIdx) => {
+    const i=matchDef[0], j=matchDef[1], sched=matchDef[2]||{};
+    const key=`${grp}_${mIdx}`;
+    const r=(results.groups||{})[key];
+    if(!r||r.h===""||r.a==="") return;
+    hasAnyResult = true;
+ 
+    const rH=parseInt(r.h), rA=parseInt(r.a);
+    lines.push(`${F(teams[i])} *${teams[i]} ${r.h}-${r.a} ${teams[j]}* ${F(teams[j])}`);
+ 
+    const picks = players.flatMap(p =>
+      (p.grilles||[]).map((g,gi) => {
+        if(!g) return null;
+        const pick=g.groups?.[key];
+        if(!pick||pick.h===""||pick.a==="") return null;
+        const pH=parseInt(pick.h), pA=parseInt(pick.a);
+        let status="wrong", pts=0, label="Raté ❌";
+        if(pH===rH&&pA===rA){status="exact";pts=5;label="Score exact 🎯";}
+        else if((pH>pA&&rH>rA)||(pH<pA&&rH<rA)||(pH===pA&&rH===rA)){status="good";pts=2;label="Bon résultat ✅";}
+        if(status!=="wrong"&&(pH===rH||pA===rA))pts+=1;
+        return {name:p.name+(gi>0?` (G${gi+1})`:""), pick:`${pH}-${pA}`, label, pts};
+      }).filter(Boolean)
+    );
+ 
+    if(picks.length>0){
+      picks.forEach(pw=>{
+        lines.push(`  ${pw.label} · ${pw.name} · ${pw.pick}${pw.pts>0?` · +${pw.pts}pts`:""}`);
+      });
+    }
+    lines.push("");
+  });
+ 
+  if(!hasAnyResult) return null;
+ 
+  // Classement global
+  const scored = players
+    .filter(p=>(p.grilles||[]).length>0)
+    .map(p=>{
+      const scores=(p.grilles||[]).map(g=>g?computeScore(g,results):0);
+      return{name:p.name, best:scores.length>0?Math.max(...scores):0};
+    })
+    .sort((a,b)=>b.best-a.best);
+ 
+  lines.push("🏆 *CLASSEMENT*");
+  scored.slice(0,5).forEach((p,i)=>{
+    const medals=["🥇","🥈","🥉","4️⃣","5️⃣"];
+    lines.push(`${medals[i]} ${p.name} · ${p.best} pts`);
+  });
+ 
+  const total = players.reduce((s,p)=>s+(p.grilles||[]).length*MISE,0);
+  lines.push(`\n💰 Cagnotte : ${total}€`);
+  lines.push("📱 Pronostics sur l'app !");
+ 
+  return lines.join("\n");
+}
+ 
+function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdminLogin}){
+  const [grp,setGrp]=useState("A");
+  const [syncing,setSyncing]=useState(false);
+  const [adminPwd,setAdminPwd]=useState("");
+  const [showAdminPwd,setShowAdminPwd]=useState(false);
+  const [expandedKey,setExpandedKey]=useState(null);
+ 
+  const handleSync=async()=>{
+    setSyncing(true);
+    await onSync();
+    setSyncing(false);
+  };
+ 
+  const {teams,matches}=GROUPS[grp];
+  const syncAgo = lastSync?Math.round((Date.now()-lastSync)/60000):null;
+ 
+  return(
+    <div style={styles.tabPage}>
+      <div style={styles.matchsHeader}>
+        <div>
+          <h2 style={styles.tabTitle}>Matchs</h2>
+          {syncAgo!==null&&(
+            <p style={styles.syncInfo}>🔄 Màj il y a {syncAgo<1?"moins d'1 min":`${syncAgo} min`}</p>
+          )}
+        </div>
+        {isAdmin&&(
+          <div style={{display:"flex",gap:6}}>
+            <button style={{...styles.syncBtn,...(syncing?{opacity:0.6}:{})}} onClick={handleSync} disabled={syncing}>
+              {syncing?"...":"🔄 Sync"}
+            </button>
+            <button style={styles.waBtn} onClick={()=>{
+              const recap=generateWhatsAppRecap(grp,results,players);
+              if(!recap){alert("Aucun résultat à envoyer pour ce groupe.");return;}
+              const msg=encodeURIComponent(recap);
+              window.open(`https://wa.me/?text=${msg}`,"_blank");
+            }}>📤 WA</button>
+          </div>
+        )}
+      </div>
+ 
+      {/* Groupes tabs */}
+      <div style={styles.groupTabs}>
+        {Object.keys(GROUPS).map(k=>(
+          <button key={k} style={{...styles.groupTab,...(grp===k?styles.groupTabOn:{})}} onClick={()=>setGrp(k)}>{k}</button>
+        ))}
+      </div>
+ 
+      {/* Matchs du groupe */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Groupe {grp}</div>
+        {matches.map((matchDef, mIdx)=>{
+          const i=matchDef[0], j=matchDef[1], sched=matchDef[2]||{};
+          const key=`${grp}_${mIdx}`;
+          const r=(results.groups||{})[key];
+          const played=r&&r.h!==""&&r.a!=="";
+          const odds=calcOdds(teams[i],teams[j]);
+          const now=new Date();
+          const isToday=sched.d&&(()=>{const[d,m]=sched.d.split("/").map(Number);const md=new Date(2026,m-1,d);return md.toDateString()===now.toDateString();})();
+          return(
+            <div key={key} style={{...styles.matchCard,...(played?styles.matchCardPlayed:{}),...(isToday?styles.matchCardToday:{})}} onClick={()=>setExpandedKey(expandedKey===key?null:key)}>
+              {/* Date + stade */}
+              {sched.d&&(
+                <div style={styles.matchMeta}>
+                  <span style={{...styles.matchMetaDate,...(isToday?{color:C.green}:{})}}>
+                    {isToday?"🔴 AUJOURD'HUI":sched.d} · {sched.h}
+                  </span>
+                  <span style={styles.matchMetaVenue}>📍 {sched.v}</span>
+                </div>
+              )}
+              {/* Équipes + score */}
+              <div style={styles.matchTeams}>
+                <div style={styles.matchTeamBlock}>
+                  <span style={styles.matchFlagLg}>{F(teams[i])}</span>
+                  <span style={styles.matchTeamName}>{teams[i]}</span>
+                </div>
+                <div style={styles.matchScore}>
+                  {played
+                    ?<><span style={styles.matchScoreNum}>{r.h}</span><span style={styles.matchScoreSep}>–</span><span style={styles.matchScoreNum}>{r.a}</span></>
+                    :<span style={styles.matchScoreVs}>VS</span>
+                  }
+                </div>
+                <div style={{...styles.matchTeamBlock,alignItems:"flex-end"}}>
+                  <span style={styles.matchFlagLg}>{F(teams[j])}</span>
+                  <span style={styles.matchTeamName}>{teams[j]}</span>
+                </div>
+              </div>
+              {/* Cotes */}
+              {!played&&(
+                <div style={styles.oddsRow}>
+                  <div style={styles.oddPill}><span style={styles.oddPillLabel}>1</span><span style={styles.oddPillVal}>{odds.h.toFixed(2)}</span></div>
+                  <div style={styles.oddPill}><span style={styles.oddPillLabel}>N</span><span style={styles.oddPillVal}>{odds.n.toFixed(2)}</span></div>
+                  <div style={styles.oddPill}><span style={styles.oddPillLabel}>2</span><span style={styles.oddPillVal}>{odds.a.toFixed(2)}</span></div>
+                </div>
+              )}
+              {/* Saisie admin */}
+              {isAdmin&&(
+                <div style={styles.adminScoreRow} onClick={e=>e.stopPropagation()}>
+                  <input style={styles.adminScoreInput} type="number" min="0" max="20"
+                    value={r?.h||""} placeholder="–"
+                    onChange={e=>onResultChange({...results,groups:{...(results.groups||{}),[key]:{...(r||{h:"",a:""}),h:e.target.value}}})} />
+                  <span style={{color:C.muted}}>:</span>
+                  <input style={styles.adminScoreInput} type="number" min="0" max="20"
+                    value={r?.a||""} placeholder="–"
+                    onChange={e=>onResultChange({...results,groups:{...(results.groups||{}),[key]:{...(r||{h:"",a:""}),a:e.target.value}}})} />
+                </div>
+              )}
+              {/* Pronostics des joueurs */}
+              {expandedKey===key&&(()=>{
+                const playersWithPick = players.flatMap(p=>
+                  (p.grilles||[]).map((g,gi)=>{
+                    if(!g) return null;
+                    const pick=g.groups?.[key];
+                    if(!pick||pick.h===""||pick.a==="") return null;
+                    const pH=parseInt(pick.h), pA=parseInt(pick.a);
+                    const rH=r?parseInt(r.h):null, rA=r?parseInt(r.a):null;
+                    let status="pending", pts=0, label="";
+                    if(r&&r.h!==""&&r.a!==""){
+                      if(pH===rH&&pA===rA){status="exact";pts=5;label="Score exact";}
+                      else if((pH>pA&&rH>rA)||(pH<pA&&rH<rA)||(pH===pA&&rH===rA)){status="good";pts=2;label="Bon résultat";}
+                      else{status="wrong";pts=0;label="Raté";}
+                      if(status!=="wrong"&&(pH===rH||pA===rA))pts+=1;
+                    }
+                    return {name:p.name,gi,pick:`${pH}-${pA}`,status,pts,label};
+                  }).filter(Boolean)
+                );
+                if(playersWithPick.length===0) return(
+                  <div style={styles.pronosEmpty}>Aucun pronostic pour ce match</div>
+                );
+                return(
+                  <div style={styles.pronosPanel} onClick={e=>e.stopPropagation()}>
+                    <div style={styles.pronosTitle}>Pronostics</div>
+                    {playersWithPick.map((pw,idx)=>{
+                      const dot = pw.status==="exact"?"🟢":pw.status==="good"?"🟡":pw.status==="pending"?"⚪":"🔴";
+                      return(
+                        <div key={idx} style={styles.pronosRow}>
+                          <span style={styles.pronosDot}>{dot}</span>
+                          <span style={styles.pronosName}>{pw.name}{pw.gi>0?` (G${pw.gi+1})`:""}</span>
+                          <span style={styles.pronosPick}>{pw.pick}</span>
+                          {pw.status!=="pending"&&<span style={{...styles.pronosResult,...(pw.status==="exact"?{color:C.green}:pw.status==="good"?{color:C.gold}:{color:C.red})}}>{pw.label} {pw.pts>0?`+${pw.pts}pts`:""}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        })}
+      </div>
+ 
+      {/* Admin login */}
+      {!isAdmin&&(
+        <div style={styles.section}>
+          {!showAdminPwd
+            ?<button style={styles.btnMuted} onClick={()=>setShowAdminPwd(true)}>⚙️ Accès admin</button>
+            :<div style={styles.adminLoginRow}>
+              <input style={styles.fieldInput} type="password" placeholder="Code admin"
+                value={adminPwd} onChange={e=>setAdminPwd(e.target.value)}/>
+              <button style={styles.btnGold} onClick={()=>onAdminLogin(adminPwd)}>OK</button>
+            </div>
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+ 
+// ─── CLASSEMENT TAB ───────────────────────────────────────────────────────────
+function ClassementTab({players,results,currentUser}){
+  const scored=players
+    .map(p=>{
+      const grilles=p.grilles||[];
+      const scores=grilles.map(g=>g?computeScore(g,results):0);
+      const best=scores.length>0?Math.max(...scores):0;
+      return{...p,best,scores,totalMise:grilles.length*MISE};
+    })
+    .sort((a,b)=>b.best-a.best);
+ 
+  const total=players.reduce((s,p)=>s+(p.grilles||[]).length*MISE,0);
+  const pot=[Math.round(total*0.6),Math.round(total*0.3),Math.round(total*0.1)];
+  const medals=["🥇","🥈","🥉"];
+  const podiumColors=["#FFD700","#C0C0C0","#CD7F32"];
+ 
+  return(
+    <div style={styles.tabPage}>
+      <h2 style={styles.tabTitle}>Classement</h2>
+ 
+      {/* Cagnotte */}
+      <div style={styles.potCard}>
+        <div style={styles.potLabel}>💰 Cagnotte totale</div>
+        <div style={styles.potAmount}>{total}€</div>
+        <div style={styles.potPrizes}>
+          <div style={styles.potPrize}><span>🥇</span><span style={{color:podiumColors[0]}}>{pot[0]}€</span></div>
+          <div style={styles.potPrize}><span>🥈</span><span style={{color:podiumColors[1]}}>{pot[1]}€</span></div>
+          <div style={styles.potPrize}><span>🥉</span><span style={{color:podiumColors[2]}}>{pot[2]}€</span></div>
+        </div>
+      </div>
+ 
+      {/* Classement */}
+      {scored.length===0&&<p style={styles.empty}>Aucune grille remplie pour l'instant.</p>}
+      {scored.map((p,i)=>{
+        const isMe=p.name===currentUser;
+        return(
+          <div key={p.name} style={{...styles.rankRow,...(isMe?styles.rankRowMe:{}),...(i===0?styles.rankRowFirst:{})}}>
+            <div style={{...styles.rankBadge,...(i<3?{color:podiumColors[i]}:{})}}>{medals[i]||`${i+1}`}</div>
+            <div style={styles.rankInfo}>
+              <div style={styles.rankName}>{p.name}{isMe&&" (toi)"}</div>
+              <div style={styles.rankGrilles}>
+                {(p.grilles||[]).map((_,gi)=>(
+                  <span key={gi} style={styles.rankGrilleTag}>G{gi+1}·{p.scores[gi]}pts</span>
+                ))}
+              </div>
+            </div>
+            <div style={styles.rankRight}>
+              <div style={styles.rankScore}>{p.best}</div>
+              <div style={styles.rankPts}>pts</div>
+              {pot[i]>0&&<div style={styles.rankPrize}>{pot[i]}€</div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+ 
+ 
+// ─── CARD SHAPE FIFA TOTY ────────────────────────────────────────────────────
+function CardShape({ accent, children }) {
+  const id = accent.replace('#','');
+  return (
+    <div style={{ position:"relative", width:148, height:208 }}>
+      <svg viewBox="0 0 148 208" style={{ position:"absolute", inset:0, width:"100%", height:"100%", zIndex:0, pointerEvents:"none" }}>
+        <defs>
+          <clipPath id={"clip_"+id}>
+            <path d="M16,0 L60,0 Q64,0 66,3 L70,9 Q73,12 74,12 Q75,12 78,9 L82,3 Q84,0 88,0 L132,0 Q148,0 148,16 L148,36 Q148,43 142,47 L142,178 Q142,196 124,202 L74,208 L24,202 Q6,196 6,178 L6,47 Q0,43 0,36 L0,16 Q0,0 16,0 Z"/>
+          </clipPath>
+          <linearGradient id={"gold_"+id} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#8a6010"/>
+            <stop offset="30%" stopColor="#f5d97a"/>
+            <stop offset="50%" stopColor="#fffde7"/>
+            <stop offset="70%" stopColor="#c9a84c"/>
+            <stop offset="100%" stopColor="#7a5010"/>
+          </linearGradient>
+          <radialGradient id={"bg_"+id} cx="50%" cy="35%" r="65%">
+            <stop offset="0%" stopColor="#1e3a8a"/>
+            <stop offset="45%" stopColor="#1a2d6b"/>
+            <stop offset="100%" stopColor="#050d28"/>
+          </radialGradient>
+        </defs>
+        <path clipPath={"url(#clip_"+id+")"} d="M0,0 L148,0 L148,208 L0,208 Z" fill={"url(#bg_"+id+")"}/>
+        {[[28,22,1],[50,16,0.8],[90,26,1],[120,18,0.9],[135,30,1],[18,55,0.7],[40,50,0.9],[100,42,0.8],[138,48,1],[14,80,0.8],[65,78,0.7],[125,75,0.9],[145,92,0.7],[22,110,0.6],[60,105,0.8],[115,108,0.7],[140,120,0.8],[30,140,0.7],[75,138,0.6],[118,145,0.8],[138,158,0.7],[35,170,0.6],[80,175,0.7],[120,168,0.6],[50,190,0.5],[95,195,0.6],[128,185,0.5]].map(([x,y,r],i)=>(
+          <circle key={i} cx={x} cy={y} r={r} fill={i%3===0?"#C9A84C":i%3===1?"#f5d97a":"#fff"} opacity={0.25+(i%4)*0.12}/>
+        ))}
+        <path d="M16,0 L60,0 Q64,0 66,3 L70,9 Q73,12 74,12 Q75,12 78,9 L82,3 Q84,0 88,0 L132,0 Q148,0 148,16 L148,36 Q148,43 142,47 L142,178 Q142,196 124,202 L74,208 L24,202 Q6,196 6,178 L6,47 Q0,43 0,36 L0,16 Q0,0 16,0 Z" fill="none" stroke={"url(#gold_"+id+")"} strokeWidth="2.2"/>
+        <path d="M20,4 L60,4 Q63,4 65,7 L69,12 Q72,15 74,15 Q76,15 79,12 L83,7 Q85,4 88,4 L128,4 Q144,4 144,20 L144,37 Q144,43 139,46 L139,177 Q139,193 122,198 L74,204 L26,198 Q9,193 9,177 L9,46 Q4,43 4,37 L4,20 Q4,4 20,4 Z" fill="none" stroke={"url(#gold_"+id+")"} strokeWidth="0.5" opacity="0.4"/>
+        <path d="M6,47 L0,54 L0,36" fill="none" stroke={"url(#gold_"+id+")"} strokeWidth="2"/>
+        <path d="M142,47 L148,54 L148,36" fill="none" stroke={"url(#gold_"+id+")"} strokeWidth="2"/>
+        <line x1="9" y1="166" x2="139" y2="166" stroke={"url(#gold_"+id+")"} strokeWidth="0.8" opacity="0.8"/>
+        <line x1="74" y1="166" x2="74" y2="196" stroke={"url(#gold_"+id+")"} strokeWidth="0.6" opacity="0.7"/>
+        <text x="74" y="205" textAnchor="middle" fontSize="9" fill={"url(#gold_"+id+")"} opacity="0.8">🏆</text>
+        <path d="M0,36 L0,16 Q0,0 16,0 L6,0 L6,38 Z" fill={"url(#gold_"+id+")"} opacity="0.35"/>
+        <path d="M148,36 L148,16 Q148,0 132,0 L142,0 L142,38 Z" fill={"url(#gold_"+id+")"} opacity="0.35"/>
+      </svg>
+      <div style={{ position:"absolute", inset:0, zIndex:10 }}>{children}</div>
+    </div>
+  );
+}
+ 
+// ─── JOKER CARD ───────────────────────────────────────────────────────────────
+function JokerCard({ joker, selected, onSelect, maxReached }) {
+  const [flipped, setFlipped] = useState(false);
+  const [tilt, setTilt] = useState({x:0,y:0});
+  const [shine, setShine] = useState({x:50,y:40});
+  const ref = useRef(null);
+  const disabled = !selected && maxReached;
+ 
+  const onMove = e => {
+    if(!ref.current||flipped) return;
+    const r=ref.current.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+    setTilt({x:(y-0.5)*-12,y:(x-0.5)*12}); setShine({x:x*100,y:y*100});
+  };
+  const onLeave=()=>{setTilt({x:0,y:0});setShine({x:50,y:40});};
+ 
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+      <div ref={ref}
+        style={{cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.3:1,transition:"opacity 0.3s",width:148,height:208,position:"relative"}}
+        onMouseMove={onMove} onMouseLeave={onLeave}
+        onClick={()=>!disabled&&!flipped&&onSelect(joker.id)}
+      >
+        {/* FRONT */}
+        <div style={{position:"absolute",inset:0,display:flipped?"none":"block",
+          transform:`perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+          transition:"transform 0.12s ease-out",animation:"flipIn 0.25s ease-out"}}>
+          <CardShape accent={joker.accent}>
+            {/* Shine */}
+            <div style={{position:"absolute",inset:0,borderRadius:8,pointerEvents:"none",
+              background:`radial-gradient(circle at ${shine.x}% ${shine.y}%, ${joker.glow} 0%, transparent 55%)`,
+              mixBlendMode:"screen",zIndex:11}}/>
+            {/* Rating */}
+            <div style={{position:"absolute",top:18,left:14,zIndex:12}}>
+              <div style={{fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:24,lineHeight:1,color:"#fff",
+                textShadow:`0 2px 4px rgba(0,0,0,0.8), 0 0 14px ${joker.accent}`}}>{joker.rating}</div>
+              <div style={{fontSize:7,letterSpacing:2,color:"rgba(255,255,255,0.8)",fontFamily:"'Rajdhani',sans-serif",fontWeight:700,marginTop:1,textShadow:"0 1px 3px rgba(0,0,0,0.8)"}}>JOKER</div>
+            </div>
+            {/* Logo */}
+            <div style={{position:"absolute",top:18,right:14,textAlign:"center",zIndex:12}}>
+              <div style={{fontSize:13}}>⚽</div>
+              <div style={{fontSize:7,color:"#fff",letterSpacing:1,fontFamily:"'Rajdhani',sans-serif",textShadow:"0 1px 3px rgba(0,0,0,0.8)"}}>2026</div>
+            </div>
+            {/* Icon */}
+            <div style={{position:"absolute",top:"50%",left:"50%",
+              transform:"translate(-50%,-62%)",fontSize:62,zIndex:12,
+              filter:`drop-shadow(0 0 18px ${joker.glow}) drop-shadow(0 4px 8px rgba(0,0,0,0.6))`,
+              animation:"iconFloat 2.8s ease-in-out infinite"}}>{joker.icon}</div>
+            {/* Name */}
+            <div style={{position:"absolute",bottom:40,left:0,right:0,textAlign:"center",zIndex:12,
+              fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:14,letterSpacing:3,color:"#fff",
+              textShadow:`0 2px 4px rgba(0,0,0,0.9), 0 0 12px ${joker.accent}`}}>{joker.name}</div>
+            <div style={{position:"absolute",bottom:31,left:0,right:0,textAlign:"center",zIndex:12,
+              fontFamily:"'Rajdhani',sans-serif",fontWeight:600,fontSize:9,letterSpacing:3,
+              color:"rgba(255,255,255,0.75)",textShadow:"0 1px 3px rgba(0,0,0,0.9)"}}>{joker.sub}</div>
+            {selected&&<div style={{position:"absolute",top:6,left:"50%",transform:"translateX(-50%)",
+              background:"rgba(255,255,255,0.92)",color:"#000",fontSize:6,letterSpacing:2,
+              padding:"2px 6px",borderRadius:8,fontFamily:"'Rajdhani',sans-serif",fontWeight:700,zIndex:13,whiteSpace:"nowrap"}}>✓ SÉLECTIONNÉ</div>}
+            <button style={{position:"absolute",bottom:6,right:10,width:16,height:16,borderRadius:"50%",
+              background:"rgba(0,0,0,0.5)",border:`1px solid ${joker.accent}80`,
+              color:joker.accent,fontSize:8,cursor:"pointer",zIndex:13,
+              display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}
+              onClick={e=>{e.stopPropagation();setFlipped(true);}}>ℹ</button>
+          </CardShape>
+        </div>
+        {/* BACK */}
+        <div style={{position:"absolute",inset:0,display:flipped?"block":"none",animation:"flipIn 0.25s ease-out"}}>
+          <CardShape accent={joker.accent}>
+            <div style={{position:"absolute",inset:0,zIndex:12,padding:"18px 14px 36px",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:22,filter:`drop-shadow(0 0 6px ${joker.glow})`}}>{joker.icon}</span>
+                <div>
+                  <div style={{fontFamily:"'Black Ops One',cursive",fontSize:11,color:"#fff",letterSpacing:1}}>{joker.name}</div>
+                  <div style={{fontSize:6,color:joker.accent,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>CDM 2026 · JOKER</div>
+                </div>
+              </div>
+              <div style={{fontSize:9,color:"rgba(255,255,255,0.75)",lineHeight:1.6,fontFamily:"'Rajdhani',sans-serif",
+                padding:"8px 0",borderTop:`1px solid ${joker.accent}30`,borderBottom:`1px solid ${joker.accent}30`}}>{joker.desc}</div>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                {joker.stats.map(([k,v])=>(
+                  <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                    padding:"4px 8px",background:`${joker.accent}10`,border:`1px solid ${joker.accent}25`,borderRadius:5}}>
+                    <span style={{fontSize:7,color:"rgba(255,255,255,0.4)",letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>{k}</span>
+                    <span style={{fontSize:9,color:joker.accent,fontFamily:"'Black Ops One',cursive"}}>{v}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={()=>setFlipped(false)} style={{background:`${joker.accent}15`,border:`1px solid ${joker.accent}40`,
+                borderRadius:8,color:joker.accent,padding:"4px",fontSize:7,cursor:"pointer",
+                fontFamily:"'Rajdhani',sans-serif",letterSpacing:2}}>← RETOUR</button>
+            </div>
+          </CardShape>
+        </div>
+      </div>
+      <div style={{fontSize:8,color:"#3a4a6a",letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>{joker.sub}</div>
+    </div>
+  );
+}
+ 
+ 
+// ─── JOKERS TAB ───────────────────────────────────────────────────────────────
+function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers, onActivateJoker }) {
+  const player = players.find(p=>p.name===currentUser);
+  const [activating, setActivating] = useState(null); // id du joker en cours d'activation
+  const [chosenTarget, setChosenTarget] = useState(null);
+  const [confirmed, setConfirmed] = useState(false);
+ 
+  if(!currentUser || !player) return (
+    <div style={styles.tabPage}>
+      <h2 style={styles.tabTitle}>🃏 Jokers</h2>
+      <p style={{...styles.empty, marginTop:40}}>Connecte-toi pour voir tes jokers.</p>
+    </div>
+  );
+ 
+  const myJokers = player.jokers || [];
+  const usedJokers = player.usedJokers || {};
+  const hasJokers = myJokers.length > 0;
+ 
+  // Tous les matchs à venir (pas encore joués)
+  const upcomingMatches = Object.entries(GROUPS).flatMap(([grp,{teams,matches}]) =>
+    matches.map((m,mIdx) => {
+      const key=`${grp}_${mIdx}`;
+      const r=(results.groups||{})[key];
+      const played=r&&r.h!==""&&r.a!=="";
+      return played ? null : { key, label:`${teams[m[0]]} vs ${teams[m[1]]}`, grp, mIdx, flags:`${F(teams[m[0]])} ${F(teams[m[1]])}` };
+    }).filter(Boolean)
+  );
+ 
+  const groupKeys = Object.keys(GROUPS);
+ 
+  const handleActivate = async () => {
+    if(!chosenTarget || !activating) return;
+    await onActivateJoker(activating, chosenTarget);
+    setActivating(null); setChosenTarget(null); setConfirmed(true);
+    setTimeout(()=>setConfirmed(false), 3000);
+  };
+ 
+  return (
+    <div style={styles.tabPage}>
+      <h2 style={styles.tabTitle}>🃏 Jokers</h2>
+ 
+      {/* Pas encore de jokers */}
+      {!hasJokers && (
+        <div style={{...styles.section, textAlign:"center", padding:24}}>
+          <div style={{fontSize:40, marginBottom:12}}>🃏</div>
+          <p style={{color:C.muted, fontSize:14, marginBottom:16}}>Tu n'as pas encore choisi tes jokers.</p>
+          <button style={styles.btnGold} onClick={onChooseJokers}>Choisir mes jokers →</button>
+        </div>
+      )}
+ 
+      {/* Mes jokers */}
+      {hasJokers && (
+        <div style={styles.section}>
+          <div style={{marginBottom:12}}>
+            <div style={styles.sectionTitle}>Mes 3 jokers · <span style={{color:C.muted,fontSize:10,letterSpacing:1}}>VERROUILLÉS</span></div>
+          </div>
+          {myJokers.map(id => {
+            const joker = JOKERS_DATA.find(j=>j.id===id);
+            if(!joker) return null;
+            const isUsed = !!usedJokers[id];
+            const target = usedJokers[id];
+            const isPassive = id==="bouclier" || id==="sniper";
+            return (
+              <div key={id} style={{
+                ...styles.grilleCard,
+                borderColor: isUsed ? "rgba(0,230,118,0.2)" : `${joker.accent}30`,
+                background: isUsed ? "rgba(0,230,118,0.04)" : `${joker.accent}08`,
+                opacity: isUsed ? 0.7 : 1,
+              }}>
+                <div style={{fontSize:32, marginRight:14}}>{joker.icon}</div>
+                <div style={styles.grilleLeft}>
+                  <div style={{...styles.grilleName, color: joker.accent}}>{joker.name}</div>
+                  <div style={styles.grilleStatus}>
+                    {isUsed
+                      ? `🔥 Utilisé${target ? ` · ${target}` : ""}`
+                      : isPassive
+                      ? "⚙️ Automatique"
+                      : "✅ Disponible"}
+                  </div>
+                </div>
+                {!isUsed && !isPassive && (
+                  <button
+                    style={{
+                      padding:"8px 14px",
+                      background:`linear-gradient(135deg,${joker.accent},${joker.accent}aa)`,
+                      border:"none", borderRadius:10, color:"#04060f",
+                      fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit",
+                      flexShrink:0,
+                    }}
+                    onClick={()=>{ setActivating(id); setChosenTarget(null); }}
+                  >Activer</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+ 
+      {/* Panneau d'activation */}
+      {activating && (()=>{
+        const joker = JOKERS_DATA.find(j=>j.id===activating);
+        const isJournee = activating==="journee";
+        return (
+          <div style={{...styles.section, background:`${joker.accent}08`, border:`1px solid ${joker.accent}25`, borderRadius:16, padding:16}}>
+            <div style={{...styles.sectionTitle, color:joker.accent}}>{joker.icon} Activer {joker.name}</div>
+            <p style={{color:C.muted, fontSize:13, marginBottom:14}}>{joker.desc}</p>
+ 
+            {/* Joker Journée → choisir un groupe */}
+            {isJournee && (
+              <>
+                <div style={{...styles.sectionTitle, marginBottom:8}}>Choisir un groupe</div>
+                <div style={styles.groupTabs}>
+                  {groupKeys.map(k=>(
+                    <button key={k} style={{...styles.groupTab,...(chosenTarget===k?{...styles.groupTabOn,borderColor:joker.accent,color:joker.accent}:{})}}
+                      onClick={()=>setChosenTarget(k)}>Groupe {k}</button>
+                  ))}
+                </div>
+              </>
+            )}
+ 
+            {/* Autres jokers → choisir un match */}
+            {!isJournee && (
+              <>
+                <div style={{...styles.sectionTitle, marginBottom:8}}>Choisir un match</div>
+                <div style={{maxHeight:200, overflowY:"auto", display:"flex", flexDirection:"column", gap:6}}>
+                  {upcomingMatches.length===0
+                    ? <p style={{color:C.muted, fontSize:13}}>Aucun match à venir.</p>
+                    : upcomingMatches.map(m=>(
+                      <button key={m.key}
+                        style={{
+                          padding:"10px 14px", textAlign:"left",
+                          background: chosenTarget===m.key ? `${joker.accent}15` : "rgba(255,255,255,0.04)",
+                          border: `1px solid ${chosenTarget===m.key ? joker.accent : "rgba(255,255,255,0.08)"}`,
+                          borderRadius:10, color:C.text, cursor:"pointer",
+                          fontFamily:"inherit", fontSize:13,
+                        }}
+                        onClick={()=>setChosenTarget(m.key)}
+                      >
+                        {m.flags} {m.label}
+                      </button>
+                    ))
+                  }
+                </div>
+              </>
+            )}
+ 
+            <div style={{display:"flex", gap:10, marginTop:14}}>
+              <button style={{flex:1, padding:12, background:"rgba(255,255,255,0.04)",
+                border:"1px solid rgba(255,255,255,0.08)", borderRadius:10,
+                color:C.muted, cursor:"pointer", fontFamily:"inherit", fontSize:13}}
+                onClick={()=>{setActivating(null);setChosenTarget(null);}}>Annuler</button>
+              <button
+                style={{flex:2, padding:12,
+                  background: chosenTarget ? `linear-gradient(135deg,${joker.accent},${joker.accent}bb)` : "rgba(255,255,255,0.06)",
+                  border:"none", borderRadius:10, color: chosenTarget ? "#04060f" : C.muted,
+                  fontWeight:700, fontSize:13, cursor: chosenTarget ? "pointer" : "not-allowed",
+                  fontFamily:"inherit"}}
+                onClick={handleActivate}
+                disabled={!chosenTarget}
+              >🔥 Confirmer l'activation</button>
+            </div>
+          </div>
+        );
+      })()}
+ 
+      {confirmed && (
+        <div style={{margin:"16px 0", padding:14, background:"rgba(0,230,118,0.08)",
+          border:"1px solid rgba(0,230,118,0.2)", borderRadius:12,
+          textAlign:"center", color:"#00E676", fontWeight:700, fontSize:14}}>
+          ✅ Joker activé !
+        </div>
+      )}
+ 
+      {/* Barème jokers */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Comment ça marche</div>
+        <div style={styles.bareme}>
+          {[
+            ["⚡ Joker X2","×2 pts sur 1 match"],
+            ["🌪️ Full Day","×2 pts sur 1 journée"],
+            ["🎯 Sniper","50 pts si score finale exact"],
+            ["🛡️ Bouclier","Annule ton pire résultat"],
+            ["💥 Téméraire","×5 pts sur un upset"],
+          ].map(([l,v])=>(
+            <div key={l} style={styles.baremeRow}>
+              <span style={styles.baremeLabel}>{l}</span>
+              <span style={styles.baremeVal}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+ 
+// ─── JOKERS SCREEN ────────────────────────────────────────────────────────────
+function JokersScreen({ playerName, onConfirm, onSkip }) {
+  const [selected, setSelected] = useState([]);
+  const ref = useRef(null);
+ 
+  const toggle = id => {
+    if(selected.includes(id)) setSelected(s=>s.filter(x=>x!==id));
+    else if(selected.length<3) setSelected(s=>[...s,id]);
+  };
+ 
+  return (
+    <div style={{minHeight:"100vh",background:"#04060f",fontFamily:"'Rajdhani',sans-serif",color:"#f0f4ff",paddingBottom:48,position:"relative",zIndex:1}}>
+      <style>{`
+        @keyframes iconFloat { 0%,100%{transform:translate(-50%,-62%)} 50%{transform:translate(-50%,-67%)} }
+        @keyframes flipIn { from{opacity:0;transform:scale(0.93)} to{opacity:1;transform:scale(1)} }
+      `}</style>
+      {/* Header */}
+      <div style={{textAlign:"center",padding:"36px 20px 24px",background:"radial-gradient(ellipse at top,rgba(20,40,100,0.5),transparent 65%)"}}>
+        <div style={{fontSize:28,marginBottom:8}}>🃏</div>
+        <h1 style={{fontFamily:"'Black Ops One',cursive",fontSize:26,margin:"0 0 6px",
+          background:"linear-gradient(135deg,#fff 0%,#C9A84C 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:2}}>
+          VOS JOKERS
+        </h1>
+        <p style={{color:"#3a4a6a",fontSize:10,margin:"0 0 6px",letterSpacing:2}}>CHOISISSEZ 3 POUVOIRS PARMI 5</p>
+        <p style={{color:"#2a3a5a",fontSize:9,margin:"0 0 20px"}}>Verrouillés au coup d'envoi du 11 juin</p>
+        {/* Dots */}
+        <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+          {[0,1,2].map(i=>(
+            <div key={i} style={{width:40,height:40,borderRadius:"50%",
+              background:i<selected.length?"rgba(201,168,76,0.12)":"rgba(255,255,255,0.03)",
+              border:`2px solid ${i<selected.length?"#C9A84C":"rgba(255,255,255,0.06)"}`,
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,
+              boxShadow:i<selected.length?"0 0 14px rgba(201,168,76,0.4)":"none",
+              transition:"all 0.4s"}}>
+              {i<selected.length?JOKERS_DATA.find(j=>j.id===selected[i])?.icon:""}
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Cards */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,padding:"0 12px",justifyItems:"center"}}>
+        {JOKERS_DATA.map(j=>(
+          <JokerCard key={j.id} joker={j} selected={selected.includes(j.id)} onSelect={toggle} maxReached={selected.length>=3}/>
+        ))}
+      </div>
+      {/* CTA */}
+      <div style={{margin:"24px 16px 0",display:"flex",flexDirection:"column",gap:10}}>
+        {selected.length===3&&(
+          <button onClick={()=>onConfirm(selected)} style={{width:"100%",padding:14,
+            background:"linear-gradient(135deg,#C9A84C,#f5d97a,#C9A84C)",
+            border:"none",borderRadius:14,color:"#04060f",
+            fontFamily:"'Black Ops One',cursive",fontSize:14,cursor:"pointer",letterSpacing:2}}>
+            🔒 CONFIRMER MES JOKERS
+          </button>
+        )}
+        <button onClick={onSkip} style={{width:"100%",padding:12,background:"rgba(255,255,255,0.04)",
+          border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,color:"#3a4a6a",
+          fontFamily:"'Rajdhani',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:2}}>
+          Choisir plus tard
+        </button>
+      </div>
+    </div>
+  );
+}
+ 
+// ─── GRID SCREEN ─────────────────────────────────────────────────────────────
+function GridScreen({player,grilleIdx,results,onSave,onBack}){
+  const existingPicks=(player?.grilles||[])[grilleIdx]||null;
+  const [picks,setPicks]=useState(existingPicks||{groups:{},ko:{r32:[],qf:[],sf:[],final:[]}});
+  const [step,setStep]=useState(0);
+ 
+  const groupKeys=Object.keys(GROUPS);
+  const isKO=step===12;
+  const grpKey=groupKeys[step];
+ 
+  const setGroupScore=(matchKey,side,val)=>{
+    setPicks(p=>({...p,groups:{...p.groups,[matchKey]:{...(p.groups[matchKey]||{h:"",a:""}), [side]:val}}}));
+  };
+ 
+  const totalGroupMatches=Object.values(GROUPS).reduce((s,g)=>s+g.matches.length,0);
+  const filledGroup=Object.keys(picks.groups||{}).filter(k=>{const sc=picks.groups[k];return sc&&sc.h!==""&&sc.a!=="";}).length;
+  const progress=Math.round((filledGroup/totalGroupMatches)*100);
+ 
+  return(
+    <div style={styles.app}>
+      <Background/>
+      <div style={{...styles.content,paddingBottom:24}}>
+        {/* Header */}
+        <div style={styles.gridHead}>
+          <button style={styles.backBtn} onClick={onBack}>←</button>
+          <div>
+            <div style={styles.gridTitle}>{player?.name}</div>
+            <div style={styles.gridSub}>Grille {grilleIdx+1} · {filledGroup}/{totalGroupMatches} matchs</div>
+          </div>
+          <div style={styles.progressPct}>{progress}%</div>
+        </div>
+ 
+        {/* Barre de progression */}
+        <div style={styles.progressBar}><div style={{...styles.progressFill,width:`${progress}%`}}/></div>
+ 
+        {/* Onglets groupes */}
+        <div style={styles.groupTabs}>
+          {groupKeys.map((k,i)=>{
+            const grpDone=GROUPS[k].matches.every(([a,b],mi)=>{const sc=picks.groups[`${k}_${mi}`];return sc&&sc.h!==""&&sc.a!=="";});
+            return(
+              <button key={k} style={{...styles.groupTab,...(step===i?styles.groupTabOn:grpDone?styles.groupTabDone:{})}} onClick={()=>setStep(i)}>{k}</button>
+            );
+          })}
+          <button style={{...styles.groupTab,...(step===12?styles.groupTabOn:{})}} onClick={()=>setStep(12)}>KO</button>
+        </div>
+ 
+        {/* Matchs du groupe */}
+        {!isKO&&(()=>{
+          const {teams,matches}=GROUPS[grpKey];
+          return(
+            <div style={{padding:"0 14px"}}>
+              <div style={styles.sectionTitle}>Groupe {grpKey}</div>
+              {matches.map(([i,j],mIdx)=>{
+                const key=`${grpKey}_${mIdx}`;
+                const sc=picks.groups[key]||{h:"",a:""};
+                const tH=teams[i],tA=teams[j];
+                const odds=calcOdds(tH,tA);
+                const pickedRes=(sc.h!==""&&sc.a!=="")?(parseInt(sc.h)>parseInt(sc.a)?"H":parseInt(sc.h)<parseInt(sc.a)?"A":"N"):null;
+                return(
+                  <div key={key} style={styles.matchCard}>
+                    <div style={styles.matchTeams}>
+                      <div style={styles.matchTeamBlock}>
+                        <span style={styles.matchFlagLg}>{F(tH)}</span>
+                        <span style={styles.matchTeamName}>{tH}</span>
+                      </div>
+                      <div style={styles.matchScore}>
+                        <input style={styles.scoreIn} type="number" min="0" max="20" value={sc.h} placeholder="–"
+                          onChange={e=>setGroupScore(key,"h",e.target.value)}/>
+                        <span style={styles.matchScoreSep}>:</span>
+                        <input style={styles.scoreIn} type="number" min="0" max="20" value={sc.a} placeholder="–"
+                          onChange={e=>setGroupScore(key,"a",e.target.value)}/>
+                      </div>
+                      <div style={{...styles.matchTeamBlock,alignItems:"flex-end"}}>
+                        <span style={styles.matchFlagLg}>{F(tA)}</span>
+                        <span style={styles.matchTeamName}>{tA}</span>
+                      </div>
+                    </div>
+                    <div style={styles.oddsRow}>
+                      {[{l:`1`,v:odds.h,r:"H"},{l:"N",v:odds.n,r:"N"},{l:`2`,v:odds.a,r:"A"}].map(({l,v,r})=>(
+                        <div key={r} style={{...styles.oddPill,...(pickedRes===r?styles.oddPillOn:{})}}>
+                          <span style={styles.oddPillLabel}>{l}</span>
+                          <span style={styles.oddPillVal}>{v.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+ 
+        {isKO&&(
+          <div style={{padding:"0 14px"}}>
+            <div style={styles.sectionTitle}>Phases finales</div>
+            <div style={styles.koPlaceholder}>
+              <div style={{fontSize:40,marginBottom:12}}>🏆</div>
+              <p style={{color:C.muted,textAlign:"center",lineHeight:1.6}}>
+                Disponible après la phase de groupes<br/>(dès le 29 juin)
+              </p>
+            </div>
+          </div>
+        )}
+ 
+        {/* Navigation */}
+        <div style={styles.gridNav}>
+          {step>0&&<button style={styles.btnMuted} onClick={()=>setStep(s=>s-1)}>← Préc.</button>}
+          {step<12
+            ?<button style={styles.btnGold} onClick={()=>setStep(s=>s+1)}>Suivant →</button>
+            :<button style={{...styles.btnGold,background:"linear-gradient(135deg,#00E676,#00BFA5)"}} onClick={()=>onSave(picks)}>
+              💾 Valider
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  );
+}
+ 
+// ─── STYLES ──────────────────────────────────────────────────────────────────
+const styles = {
+  app:{ position:"relative", minHeight:"100vh", maxWidth:480, margin:"0 auto", fontFamily:"'Georgia',serif", color:C.text, overflow:"hidden" },
+  bg:{ position:"fixed", inset:0, background:"#050810", zIndex:0, overflow:"hidden" },
+  bgPhoto:{ position:"absolute", inset:0, backgroundImage:"url('https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=800&q=80')", backgroundSize:"cover", backgroundPosition:"center top", opacity:0.18 },
+  bgOverlay:{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(5,8,16,0.6) 0%, rgba(5,8,16,0.3) 40%, rgba(5,8,16,0.85) 100%)" },
+  bgGlob1:{ position:"absolute", top:-80, left:-80, width:360, height:360, borderRadius:"50%", background:"radial-gradient(circle,rgba(255,140,0,0.12),transparent 70%)" },
+  bgGlob2:{ position:"absolute", bottom:0, right:-60, width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle,rgba(255,215,0,0.08),transparent 70%)" },
+ 
+  content:{ position:"relative", zIndex:1, paddingBottom:80, minHeight:"100vh", overflowY:"auto" },
+ 
+  nav:{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:480, background:"rgba(10,14,26,0.95)", backdropFilter:"blur(20px)", borderTop:"1px solid rgba(255,255,255,0.08)", display:"flex", zIndex:100, padding:"4px 0 calc(4px + env(safe-area-inset-bottom))" },
+  navBtn:{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", padding:"8px 4px", background:"none", border:"none", color:C.muted, cursor:"pointer", position:"relative", fontFamily:"inherit" },
+  navBtnOn:{ color:C.text },
+  navIcon:{ fontSize:20, lineHeight:1 },
+  navLabel:{ fontSize:10, letterSpacing:1, marginTop:4, textTransform:"uppercase" },
+  navPill:{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)", width:32, height:3, background:C.gold, borderRadius:2 },
+ 
+  tabPage:{ padding:"24px 16px 16px" },
+  tabTitle:{ fontSize:22, fontWeight:700, margin:"0 0 16px", letterSpacing:1 },
+ 
+  heroSection:{ textAlign:"center", padding:"32px 0 24px" },
+  heroEmoji:{ fontSize:56 },
+  heroTitle:{ fontSize:48, fontWeight:900, letterSpacing:5, margin:"8px 0 0", lineHeight:1, fontStyle:"italic" },
+  heroYear:{ color:C.gold, display:"block", fontSize:60 },
+  heroSub:{ color:C.muted, fontSize:11, letterSpacing:2, textTransform:"uppercase", margin:"8px 0 24px" },
+  heroNote:{ textAlign:"center", color:C.muted, fontSize:12, marginTop:12 },
+ 
+  playerHeader:{ display:"flex", alignItems:"center", gap:12, padding:"16px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, marginBottom:20 },
+  playerAvatar:{ width:48, height:48, borderRadius:"50%", background:"linear-gradient(135deg,#FF6B35,#FFD700)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:700, color:"#000", flexShrink:0 },
+  playerName:{ fontSize:18, fontWeight:700 },
+  playerMeta:{ color:C.muted, fontSize:12, marginTop:2 },
+  playerRank:{ marginLeft:"auto", fontSize:22, fontWeight:900, color:C.gold },
+ 
+  scoreHero:{ textAlign:"center", padding:"28px 0", background:"linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,100,0,0.05))", borderRadius:20, border:`1px solid rgba(255,215,0,0.15)`, marginBottom:24 },
+  scoreNum:{ fontSize:72, fontWeight:900, color:C.gold, lineHeight:1 },
+  scorePts:{ fontSize:18, color:C.muted, letterSpacing:3, textTransform:"uppercase" },
+  scoreSub:{ fontSize:11, color:C.muted, marginTop:4 },
+ 
+  section:{ marginBottom:24 },
+  sectionTitle:{ fontSize:11, letterSpacing:2, textTransform:"uppercase", color:C.muted, marginBottom:12 },
+ 
+  grilleCard:{ display:"flex", alignItems:"center", padding:"14px 16px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, marginBottom:8, cursor:"pointer", position:"relative", overflow:"hidden" },
+  grilleLeft:{ flex:1 },
+  grilleName:{ fontSize:15, fontWeight:600 },
+  grilleStatus:{ fontSize:12, color:C.muted, marginTop:2 },
+  grilleRight:{ textAlign:"right" },
+  grilleScore:{ fontSize:28, fontWeight:900, color:C.gold, lineHeight:1 },
+  grillePts:{ fontSize:11, color:C.muted, textTransform:"uppercase", letterSpacing:1 },
+  grilleBest:{ position:"absolute", top:6, right:6, fontSize:8, letterSpacing:1, background:"rgba(255,215,0,0.2)", color:C.gold, padding:"2px 6px", borderRadius:4 },
+ 
+  addGrilleBtn:{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"14px 16px", background:"rgba(255,215,0,0.06)", border:`1px dashed rgba(255,215,0,0.3)`, borderRadius:14, color:C.text, cursor:"pointer", fontFamily:"inherit", textAlign:"left" },
+  addGrilleIcon:{ fontSize:24, color:C.gold, fontWeight:300, width:40, height:40, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(255,215,0,0.1)", borderRadius:10, flexShrink:0 },
+  addGrilleTxt:{ fontSize:14, fontWeight:600 },
+  addGrillePrice:{ fontSize:12, color:C.gold, marginTop:2 },
+ 
+  bareme:{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, overflow:"hidden" },
+  baremeRow:{ display:"flex", justifyContent:"space-between", padding:"10px 16px", borderBottom:`1px solid ${C.border}` },
+  baremeLabel:{ fontSize:13, color:C.muted },
+  baremeVal:{ fontSize:13, fontWeight:700, color:C.gold },
+ 
+  matchsHeader:{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 },
+  syncBtn:{ padding:"8px 14px", background:"rgba(68,138,255,0.15)", border:`1px solid rgba(68,138,255,0.3)`, borderRadius:10, color:C.blue, cursor:"pointer", fontSize:13, fontFamily:"inherit" },
+  waBtn:{ padding:"8px 14px", background:"rgba(37,211,102,0.15)", border:"1px solid rgba(37,211,102,0.3)", borderRadius:10, color:"#25D366", cursor:"pointer", fontSize:13, fontFamily:"inherit" },
+  syncInfo:{ fontSize:11, color:C.muted, marginTop:4 },
+ 
+  groupTabs:{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:16 },
+  groupTab:{ padding:"6px 10px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.muted, cursor:"pointer", fontSize:12, fontFamily:"inherit" },
+  groupTabOn:{ background:"rgba(255,215,0,0.15)", border:`1px solid rgba(255,215,0,0.5)`, color:C.gold },
+  groupTabDone:{ border:`1px solid rgba(0,230,118,0.3)`, color:C.green },
+ 
+  matchCard:{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"14px", marginBottom:10, overflow:"hidden" },
+  matchCardPlayed:{ borderColor:"rgba(0,230,118,0.2)", background:"rgba(0,230,118,0.03)" },
+  matchCardToday:{ borderColor:"rgba(0,230,118,0.5)", boxShadow:"0 0 16px rgba(0,230,118,0.1)" },
+  matchMeta:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8, paddingBottom:8, borderBottom:"1px solid rgba(255,255,255,0.06)" },
+  matchMetaDate:{ fontSize:12, color:"#FFD700", fontWeight:600, letterSpacing:0.5 },
+  matchMetaVenue:{ fontSize:11, color:"#6B7A99" },
+  matchTeams:{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 },
+  matchTeamBlock:{ display:"flex", flexDirection:"column", alignItems:"flex-start", gap:4, flex:1 },
+  matchFlagLg:{ fontSize:28 },
+  matchTeamName:{ fontSize:11, color:C.muted, lineHeight:1.2 },
+  matchScore:{ display:"flex", alignItems:"center", gap:8, flexShrink:0 },
+  matchScoreNum:{ fontSize:28, fontWeight:900, color:C.green, minWidth:24, textAlign:"center" },
+  matchScoreSep:{ fontSize:18, color:C.muted },
+  matchScoreVs:{ fontSize:14, color:C.muted, letterSpacing:2, padding:"0 8px" },
+  oddsRow:{ display:"flex", gap:6 },
+  oddPill:{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", padding:"6px 4px", background:"rgba(255,255,255,0.04)", border:`1px solid ${C.border}`, borderRadius:8 },
+  oddPillOn:{ background:"rgba(255,215,0,0.12)", border:`1px solid rgba(255,215,0,0.4)` },
+  oddPillLabel:{ fontSize:9, color:C.muted, letterSpacing:1, textTransform:"uppercase", marginBottom:2 },
+  oddPillVal:{ fontSize:14, fontWeight:700, color:C.gold },
+  adminScoreRow:{ display:"flex", alignItems:"center", gap:8, marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` },
+  pronosPanel:{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` },
+  pronosTitle:{ fontSize:10, letterSpacing:2, textTransform:"uppercase", color:C.muted, marginBottom:8 },
+  pronosRow:{ display:"flex", alignItems:"center", gap:8, paddingBottom:6, marginBottom:6, borderBottom:`1px solid rgba(255,255,255,0.04)` },
+  pronosDot:{ fontSize:12, flexShrink:0 },
+  pronosName:{ flex:1, fontSize:13, fontWeight:600 },
+  pronosPick:{ fontSize:13, color:C.gold, fontWeight:700, minWidth:28, textAlign:"center" },
+  pronosResult:{ fontSize:11, letterSpacing:0.5 },
+  pronosEmpty:{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}`, fontSize:12, color:C.muted, textAlign:"center", paddingBottom:4 },
+  adminScoreInput:{ width:52, height:40, textAlign:"center", background:"rgba(0,230,118,0.08)", border:`1px solid rgba(0,230,118,0.3)`, borderRadius:8, color:C.green, fontSize:18, fontWeight:700, outline:"none", fontFamily:"inherit" },
+  adminLoginRow:{ display:"flex", gap:8 },
+ 
+  potCard:{ background:"linear-gradient(135deg,rgba(255,215,0,0.1),rgba(255,100,0,0.08))", border:`1px solid rgba(255,215,0,0.2)`, borderRadius:20, padding:"20px", marginBottom:20, textAlign:"center" },
+  potLabel:{ fontSize:11, letterSpacing:2, color:C.muted, textTransform:"uppercase", marginBottom:8 },
+  potAmount:{ fontSize:52, fontWeight:900, color:C.gold, lineHeight:1 },
+  potPrizes:{ display:"flex", justifyContent:"center", gap:24, marginTop:12 },
+  potPrize:{ display:"flex", gap:6, fontSize:16, fontWeight:700 },
+ 
+  rankRow:{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, marginBottom:8 },
+  rankRowMe:{ background:"rgba(255,215,0,0.06)", border:`1px solid rgba(255,215,0,0.2)` },
+  rankRowFirst:{ background:"rgba(255,215,0,0.08)", border:`1px solid rgba(255,215,0,0.3)` },
+  rankBadge:{ fontSize:22, width:36, textAlign:"center", flexShrink:0 },
+  rankInfo:{ flex:1, minWidth:0 },
+  rankName:{ fontSize:15, fontWeight:600, marginBottom:4 },
+  rankGrilles:{ display:"flex", gap:4, flexWrap:"wrap" },
+  rankGrilleTag:{ fontSize:10, padding:"2px 6px", background:"rgba(255,255,255,0.06)", borderRadius:4, color:C.muted },
+  rankRight:{ textAlign:"right", flexShrink:0 },
+  rankScore:{ fontSize:26, fontWeight:900, color:C.gold, lineHeight:1 },
+  rankPts:{ fontSize:10, color:C.muted, textTransform:"uppercase", letterSpacing:1 },
+  rankPrize:{ fontSize:13, color:C.green, fontWeight:700, marginTop:2 },
+ 
+  empty:{ textAlign:"center", color:C.muted, padding:"40px 20px", fontSize:14 },
+ 
+  // Grid screen
+  gridHead:{ display:"flex", alignItems:"center", gap:12, padding:"20px 14px 12px" },
+  backBtn:{ background:"none", border:"none", color:C.gold, fontSize:22, cursor:"pointer", padding:"4px 8px", lineHeight:1, fontFamily:"inherit" },
+  gridTitle:{ fontSize:18, fontWeight:700 },
+  gridSub:{ fontSize:11, color:C.muted, marginTop:2 },
+  progressPct:{ marginLeft:"auto", fontSize:13, color:C.gold, fontWeight:700 },
+  progressBar:{ margin:"0 14px 12px", height:4, background:"rgba(255,255,255,0.06)", borderRadius:2 },
+  progressFill:{ height:"100%", background:`linear-gradient(90deg,${C.gold},${C.green})`, borderRadius:2, transition:"width .4s" },
+ 
+  scoreIn:{ width:44, height:44, textAlign:"center", background:"rgba(255,255,255,0.06)", border:`1px solid ${C.border}`, borderRadius:10, color:C.text, fontSize:20, fontWeight:700, outline:"none", fontFamily:"inherit" },
+  koPlaceholder:{ display:"flex", flexDirection:"column", alignItems:"center", padding:"40px 20px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:16 },
+  gridNav:{ display:"flex", gap:10, padding:"16px 14px", justifyContent:"flex-end" },
+ 
+  // Shared buttons
+  btnGold:{ padding:"14px 20px", background:"linear-gradient(135deg,#FFD700,#FF8C00)", border:"none", borderRadius:12, color:"#0a0e1a", fontWeight:700, fontSize:15, cursor:"pointer", fontFamily:"inherit" },
+  btnMuted:{ padding:"12px 16px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, color:C.text, cursor:"pointer", fontFamily:"inherit", fontSize:14 },
+ 
+  // Onboarding
+  obTrophy:{ fontSize:64, textAlign:"center" },
+  obTitle:{ fontSize:42, fontWeight:900, letterSpacing:5, textAlign:"center", margin:"8px 0 4px", fontStyle:"italic" },
+  obSub:{ color:C.muted, fontSize:12, letterSpacing:2, textTransform:"uppercase", textAlign:"center", marginBottom:32 },
+  obCard:{ width:"100%", background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:20 },
+  fieldLabel:{ fontSize:11, letterSpacing:2, textTransform:"uppercase", color:C.muted, display:"block", marginBottom:8 },
+  fieldInput:{ width:"100%", padding:"13px 14px", background:"rgba(255,255,255,0.06)", border:`1px solid ${C.border}`, borderRadius:12, color:C.text, fontSize:16, outline:"none", fontFamily:"inherit", boxSizing:"border-box", marginBottom:12 },
+  fieldErr:{ color:C.red, fontSize:12, marginBottom:8 },
+  existingBtn:{ display:"block", width:"100%", padding:"11px 14px", background:"rgba(255,255,255,0.04)", border:`1px solid ${C.border}`, borderRadius:10, color:C.text, cursor:"pointer", fontFamily:"inherit", textAlign:"left", fontSize:14, marginBottom:6 },
+};
+ 
+ 
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+  </script>
 </body>
 </html>
