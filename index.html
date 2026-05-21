@@ -731,6 +731,19 @@ function ScoreTab({currentUser,players,results,onLogin,onAddGrille,onEditGrille}
         )}
       </div>
 
+      {/* Déconnexion */}
+      <div style={{margin:"8px 0 24px", textAlign:"center"}}>
+        <button style={{padding:"8px 20px", background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.2)", borderRadius:10, color:"#f87171", cursor:"pointer", fontFamily:"inherit", fontSize:12, letterSpacing:1}}
+          onClick={()=>{
+            if(window.confirm("⚠️ Tout sera supprimé (profil, grille, jokers). Êtes-vous sûr ?")) {
+              localStorage.clear();
+              window.location.reload();
+            }
+          }}>
+          🚪 Se déconnecter
+        </button>
+      </div>
+
       {/* Barème */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Barème des points</div>
