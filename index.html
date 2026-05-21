@@ -391,15 +391,27 @@ function App() {
         const p = await dbGet(PLAYERS_KEY);
         const r = await dbGet(RESULTS_KEY);
         if(p !== null && !isRegistering.current) {
-          // Garde la version avec le plus de joueurs (la plus récente)
           const local = playersRef.current;
-          if(p.length >= local.length) {
-            saveLocal(PLAYERS_KEY, p);
-            setPlayers(p);
-          } else {
-            // Le local est plus récent, on remonte vers le partagé
-            saveShared(PLAYERS_KEY, local);
-          }
+          // Fusion intelligente : garde les données les plus complètes pour chaque joueur
+          const merged = p.map(remotePlayer => {
+            const localPlayer = local.find(lp => lp.name === remotePlayer.name);
+            if (!localPlayer) return remotePlayer;
+            // Garde le joueur avec le plus de grilles/jokers (le plus récent)
+            const remoteGrilles = (remotePlayer.grilles || []).length;
+            const localGrilles = (localPlayer.grilles || []).length;
+            const remoteJokers = (remotePlayer.jokers || []).length;
+            const localJokers = (localPlayer.jokers || []).length;
+            if (localGrilles > remoteGrilles || localJokers > remoteJokers) {
+              return localPlayer; // local plus récent
+            }
+            return remotePlayer;
+          });
+          // Ajoute les joueurs locaux pas encore sur le serveur
+          local.forEach(lp => {
+            if (!merged.find(m => m.name === lp.name)) merged.push(lp);
+          });
+          saveLocal(PLAYERS_KEY, merged);
+          setPlayers(merged);
         }
         if(r !== null) { saveLocal(RESULTS_KEY, r); setResults(r); }
       } catch(e) {}
