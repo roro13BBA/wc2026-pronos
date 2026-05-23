@@ -912,6 +912,25 @@ function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdm
   const [adminPwd,setAdminPwd]=useState("");
   const [showAdminPwd,setShowAdminPwd]=useState(false);
   const [expandedKey,setExpandedKey]=useState(null);
+  const [localResults,setLocalResults]=useState(results);
+  const [saving,setSaving]=useState(false);
+  const [saved,setSaved]=useState(false);
+
+  // Sync localResults quand results change depuis le polling
+  React.useEffect(()=>{ setLocalResults(results); },[JSON.stringify(results)]);
+
+  const updateLocalScore = (key, side, val) => {
+    setLocalResults(r=>({...r,groups:{...(r.groups||{}),[key]:{...((r.groups||{})[key]||{h:"",a:""}), [side]:val}}}));
+    setSaved(false);
+  };
+
+  const saveScores = async () => {
+    setSaving(true);
+    await onResultChange(localResults);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(()=>setSaved(false), 3000);
+  };
 
   const handleSync=async()=>{
     setSyncing(true);
@@ -932,9 +951,13 @@ function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdm
           )}
         </div>
         {isAdmin&&(
-          <div style={{display:"flex",gap:6}}>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             <button style={{...styles.syncBtn,...(syncing?{opacity:0.6}:{})}} onClick={handleSync} disabled={syncing}>
               {syncing?"...":"🔄 Sync"}
+            </button>
+            <button style={{...styles.syncBtn,background:saved?"rgba(0,230,118,0.15)":"rgba(255,215,0,0.15)",borderColor:saved?"rgba(0,230,118,0.4)":"rgba(255,215,0,0.4)",color:saved?"#00E676":"#FFD700",...(saving?{opacity:0.6}:{})}}
+              onClick={saveScores} disabled={saving}>
+              {saving?"...":saved?"✅ Sauvé":"💾 Valider"}
             </button>
             <button style={styles.waBtn} onClick={()=>{
               const recap=generateWhatsAppRecap(grp,results,players);
@@ -1004,12 +1027,12 @@ function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdm
               {isAdmin&&(
                 <div style={styles.adminScoreRow} onClick={e=>e.stopPropagation()}>
                   <input style={styles.adminScoreInput} type="number" min="0" max="20"
-                    value={r?.h||""} placeholder="–"
-                    onChange={e=>onResultChange({...results,groups:{...(results.groups||{}),[key]:{...(r||{h:"",a:""}),h:e.target.value}}})} />
+                    value={(localResults.groups||{})[key]?.h||""} placeholder="–"
+                    onChange={e=>updateLocalScore(key,"h",e.target.value)} />
                   <span style={{color:C.muted}}>:</span>
                   <input style={styles.adminScoreInput} type="number" min="0" max="20"
-                    value={r?.a||""} placeholder="–"
-                    onChange={e=>onResultChange({...results,groups:{...(results.groups||{}),[key]:{...(r||{h:"",a:""}),a:e.target.value}}})} />
+                    value={(localResults.groups||{})[key]?.a||""} placeholder="–"
+                    onChange={e=>updateLocalScore(key,"a",e.target.value)} />
                 </div>
               )}
               {/* Pronostics des joueurs */}
