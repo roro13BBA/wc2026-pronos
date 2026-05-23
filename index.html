@@ -499,7 +499,14 @@ function App() {
     setCurrentUser(name);
     try { localStorage.setItem('wc2026_user', name); } catch(e) {}
   };
-  const saveResults = async r => { setResults(r); await saveAll(RESULTS_KEY, r); };
+  const saveResults = async r => {
+    isEditingResults.current = true;
+    setResults(r);
+    saveLocal(RESULTS_KEY, r);
+    await saveShared(RESULTS_KEY, r);
+    // Garde le verrou 5s après la sauvegarde pour être sûr
+    setTimeout(()=>{ isEditingResults.current = false; }, 5000);
+  };
 
   const manualSync = async () => {
     if(syncRef.current) return;
@@ -602,7 +609,7 @@ function App() {
           <MatchsTab results={results} lastSync={lastSync} isAdmin={isAdmin} players={players}
             onSync={manualSync}
             onStartEditing={()=>{ isEditingResults.current=true; }}
-            onResultChange={async r=>{ await saveResults(r); }}
+            onResultChange={async r=>{ await saveResults(r); isEditingResults.current=true; setTimeout(()=>{isEditingResults.current=false;},5000); }}
             onDoneEditing={()=>{ isEditingResults.current=false; }}
             onAdminLogin={pwd=>{ if(pwd==="wc2026admin")setIsAdmin(true); }} />
         )}
