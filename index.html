@@ -415,6 +415,7 @@ function App() {
   const [screen, setScreen] = useState("main"); // main | onboarding | grid | jokers
   const [pendingPicks, setPendingPicks] = useState(null); // grille en attente avant choix jokers
   const isRegistering = useRef(false); // bloque le polling pendant inscription
+  const isEditingResults = useRef(false); // bloque le polling des résultats pendant saisie admin
   const [currentUser, setCurrentUser] = useState(() => { try { return localStorage.getItem('wc2026_user') || null; } catch(e) { return null; } });
   const [editGrille, setEditGrille] = useState({playerName:null,idx:0});
   const [isAdmin, setIsAdmin] = useState(false);
@@ -464,7 +465,7 @@ function App() {
           saveLocal(PLAYERS_KEY, merged);
           setPlayers(merged);
         }
-        if(r !== null) { saveLocal(RESULTS_KEY, r); setResults(r); }
+        if(r !== null && !isEditingResults.current) { saveLocal(RESULTS_KEY, r); setResults(r); }
       } catch(e) {}
     }, 20000);
     return ()=>clearInterval(id);
@@ -599,7 +600,10 @@ function App() {
         )}
         {tab==="matchs" && (
           <MatchsTab results={results} lastSync={lastSync} isAdmin={isAdmin} players={players}
-            onSync={manualSync} onResultChange={saveResults}
+            onSync={manualSync}
+            onStartEditing={()=>{ isEditingResults.current=true; }}
+            onResultChange={async r=>{ await saveResults(r); }}
+            onDoneEditing={()=>{ isEditingResults.current=false; }}
             onAdminLogin={pwd=>{ if(pwd==="wc2026admin")setIsAdmin(true); }} />
         )}
         {tab==="classement" && (
@@ -906,7 +910,7 @@ function generateWhatsAppRecap(grp, results, players) {
   return lines.join("\n");
 }
 
-function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdminLogin}){
+function MatchsTab({results,lastSync,isAdmin,players,onSync,onStartEditing,onResultChange,onDoneEditing,onAdminLogin}){
   const [grp,setGrp]=useState("A");
   const [syncing,setSyncing]=useState(false);
   const [adminPwd,setAdminPwd]=useState("");
@@ -920,6 +924,7 @@ function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdm
   React.useEffect(()=>{ setLocalResults(results); },[JSON.stringify(results)]);
 
   const updateLocalScore = (key, side, val) => {
+    onStartEditing && onStartEditing();
     setLocalResults(r=>({...r,groups:{...(r.groups||{}),[key]:{...((r.groups||{})[key]||{h:"",a:""}), [side]:val}}}));
     setSaved(false);
   };
@@ -927,6 +932,7 @@ function MatchsTab({results,lastSync,isAdmin,players,onSync,onResultChange,onAdm
   const saveScores = async () => {
     setSaving(true);
     await onResultChange(localResults);
+    onDoneEditing && onDoneEditing();
     setSaving(false);
     setSaved(true);
     setTimeout(()=>setSaved(false), 3000);
