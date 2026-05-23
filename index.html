@@ -1292,7 +1292,7 @@ function JokerCard({ joker, selected, onSelect, maxReached }) {
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <span style={{fontSize:22,filter:`drop-shadow(0 0 6px ${joker.glow})`}}>{joker.icon}</span>
                 <div>
-                  <div style={{fontFamily:"'Black Ops One',cursive",fontSize:11,color:"#fff",letterSpacing:1}}>{joker.name}</div>
+                  <div style={{fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:11,color:"#fff",letterSpacing:1}}>{joker.name}</div>
                   <div style={{fontSize:6,color:joker.accent,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>CDM 2026 · JOKER</div>
                 </div>
               </div>
@@ -1303,7 +1303,7 @@ function JokerCard({ joker, selected, onSelect, maxReached }) {
                   <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
                     padding:"4px 8px",background:`${joker.accent}10`,border:`1px solid ${joker.accent}25`,borderRadius:5}}>
                     <span style={{fontSize:7,color:"rgba(255,255,255,0.4)",letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>{k}</span>
-                    <span style={{fontSize:9,color:joker.accent,fontFamily:"'Black Ops One',cursive"}}>{v}</span>
+                    <span style={{fontSize:9,color:joker.accent,fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>{v}</span>
                   </div>
                 ))}
               </div>
@@ -1551,7 +1551,7 @@ function JokersScreen({ playerName, onConfirm, onSkip }) {
             style={{width:"100%",padding:15,
               background:selected?"linear-gradient(135deg,#C9A84C,#f5d97a,#C9A84C)":"rgba(255,255,255,0.06)",
               border:"none",borderRadius:14,color:selected?"#04060f":"#3a4a6a",
-              fontFamily:"'Black Ops One',cursive",fontSize:14,
+              fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:14,
               cursor:selected?"pointer":"not-allowed",letterSpacing:2}}
             onClick={()=>selected&&setStep("config")}>
             {selected ? `CONFIGURER ${JOKERS_DATA.find(j=>j.id===selected)?.icon}` : "SÉLECTIONNE UN JOKER"}
@@ -1631,7 +1631,7 @@ function JokersScreen({ playerName, onConfirm, onSkip }) {
             onConfirm(config);
           }}
           style={{width:"100%",padding:15,background:"linear-gradient(135deg,#C9A84C,#f5d97a,#C9A84C)",
-            border:"none",borderRadius:14,color:"#04060f",fontFamily:"'Black Ops One',cursive",
+            border:"none",borderRadius:14,color:"#04060f",fontFamily:"'Rajdhani',sans-serif",fontWeight:700,
             fontSize:14,cursor:"pointer",letterSpacing:2}}>
           🔒 CONFIRMER MES JOKERS
         </button>
