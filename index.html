@@ -212,27 +212,38 @@ const PTS = {groupGoal:1,groupResult:2,groupExact:5,r32:3,qfWin:5,sfWin:8,finalW
 const MISE=5, MAX_GRILLES=3;
 
 const JOKERS_DATA = [
-  { id:"double", name:"JOKER X2", sub:"MISE DOUBLE", icon:"⚡", rating:"X2",
-    accent:"#C9A84C", glow:"rgba(201,168,76,0.7)",
-    desc:"Double les points d'un match de ton choix. À activer avant le coup d'envoi.",
-    stats:[["EFFET","×2 PTS"],["CIBLE","1 MATCH"],["USAGE","1 FOIS"]] },
-  { id:"journee", name:"FULL DAY", sub:"JOURNÉE ×2", icon:"🌪️", rating:"FD",
-    accent:"#c084fc", glow:"rgba(192,132,252,0.7)",
-    desc:"Double tous tes points pour une journée entière. Risqué mais dévastateur.",
-    stats:[["EFFET","×2 PTS"],["CIBLE","1 JOUR"],["USAGE","1 FOIS"]] },
-  { id:"sniper", name:"SNIPER", sub:"SCORE FINALE", icon:"🎯", rating:"50",
-    accent:"#f87171", glow:"rgba(248,113,113,0.7)",
-    desc:"Pronostique le score exact de la finale avant le tournoi. Réussite = 50 pts.",
-    stats:[["GAIN","50 PTS"],["CIBLE","FINALE"],["USAGE","1 FOIS"]] },
-  { id:"bouclier", name:"BOUCLIER", sub:"PROTECTION", icon:"🛡️", rating:"GK",
-    accent:"#38bdf8", glow:"rgba(56,189,248,0.7)",
-    desc:"Annule ton pire résultat. Ce match comptera 0 au lieu de te pénaliser.",
-    stats:[["EFFET","ANNULE"],["CIBLE","1 MATCH"],["USAGE","1 FOIS"]] },
-  { id:"temeraire", name:"TÉMÉRAIRE", sub:"GROS UPSET", icon:"💥", rating:"X5",
-    accent:"#34d399", glow:"rgba(52,211,153,0.7)",
-    desc:"Parie sur une énorme surprise. Si ça arrive, tes points sont multipliés par 5.",
-    stats:[["EFFET","×5 PTS"],["CIBLE","UPSET"],["USAGE","1 FOIS"]] },
+  { id:"fullday", name:"FULL DAY", sub:"JOURNÉE ×2", icon:"🌪️", rating:"×2",
+    rarity:"COMMUN", accent:"#c084fc", glow:"rgba(192,132,252,0.7)",
+    desc:"Double tous tes points pour une journée entière de ton choix. À choisir avant le tournoi.",
+    stats:[["EFFET","×2 PTS"],["CIBLE","1 JOURNÉE"],["USAGE","1 FOIS"]] },
+  { id:"sniper", name:"SNIPER", sub:"FINALE", icon:"🎯", rating:"150",
+    rarity:"LÉGENDAIRE", accent:"#f87171", glow:"rgba(248,113,113,0.7)",
+    desc:"Pronostique les 2 équipes finalistes et le score exact avant le tournoi.",
+    stats:[["2 ÉQUIPES","50 PTS"],["+ SCORE","150 PTS"],["1 ÉQUIPE","20 PTS"]] },
+  { id:"surprise", name:"SURPRISE", sub:"UPSET ×3/×5", icon:"💥", rating:"×5",
+    rarity:"RARE", accent:"#34d399", glow:"rgba(52,211,153,0.7)",
+    desc:"Parie sur une petite équipe qui bat une grosse. Uniquement sur les matchs avec 15+ pts d'écart.",
+    stats:[["ÉCART 15-20","×3 PTS"],["ÉCART >20","×5 PTS"],["USAGE","1 FOIS"]] },
 ];
+
+// Matchs éligibles pour le joker Surprise (écart TEAM_STRENGTH >= 15)
+function getUpsetMatches() {
+  return Object.entries(GROUPS).flatMap(([grp,{teams,matches}]) =>
+    matches.map((m,mIdx) => {
+      const tH=teams[m[0]], tA=teams[m[1]];
+      const sH=TEAM_STRENGTH[tH]||55, sA=TEAM_STRENGTH[tA]||55;
+      const diff=Math.abs(sH-sA);
+      if(diff<15) return null;
+      const favorite = sH>sA ? tH : tA;
+      const underdog = sH>sA ? tA : tH;
+      const mult = diff>20 ? 5 : 3;
+      const sched=m[2]||{};
+      return { key:`${grp}_${mIdx}`, grp, mIdx, favorite, underdog, diff, mult,
+               label:`${F(underdog)} ${underdog} vs ${F(favorite)} ${favorite}`,
+               date:sched.d, time:sched.h };
+    }).filter(Boolean)
+  );
+}
 const PLAYERS_KEY="wc2026_players_v4", RESULTS_KEY="wc2026_results_v4", SYNC_KEY="wc2026_lastsync";
 
 function scoreResult(h,a){if(h>a)return"H";if(h<a)return"A";return"N";}
@@ -1420,13 +1431,16 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
 
 // ─── JOKERS SCREEN ────────────────────────────────────────────────────────────
 function JokersScreen({ playerName, onConfirm, onSkip }) {
-  const [selected, setSelected] = useState([]);
-  const ref = useRef(null);
-
-  const toggle = id => {
-    if(selected.includes(id)) setSelected(s=>s.filter(x=>x!==id));
-    else if(selected.length<3) setSelected(s=>[...s,id]);
-  };
+  // Tous les 3 jokers sont automatiquement donnés
+  const [sniperTeam1, setSniperTeam1] = useState("");
+  const [sniperTeam2, setSniperTeam2] = useState("");
+  const [sniperScore1, setSniperScore1] = useState("");
+  const [sniperScore2, setSniperScore2] = useState("");
+  const [fullDayDate, setFullDayDate] = useState("");
+  const [surpriseMatch, setSurpriseMatch] = useState("");
+  const upsetMatches = getUpsetMatches();
+  const allTeams = Object.values(GROUPS).flatMap(g=>g.teams);
+  const uniqueDates = [...new Set(Object.values(GROUPS).flatMap(g=>g.matches.map(m=>m[2]?.d)).filter(Boolean))].sort();
 
   return (
     <div style={{minHeight:"100vh",background:"#04060f",fontFamily:"'Rajdhani',sans-serif",color:"#f0f4ff",paddingBottom:48,position:"relative",zIndex:1}}>
@@ -1441,18 +1455,17 @@ function JokersScreen({ playerName, onConfirm, onSkip }) {
           background:"linear-gradient(135deg,#fff 0%,#C9A84C 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:2}}>
           VOS JOKERS
         </h1>
-        <p style={{color:"#3a4a6a",fontSize:10,margin:"0 0 6px",letterSpacing:2}}>CHOISISSEZ 3 POUVOIRS PARMI 5</p>
+        <p style={{color:"#3a4a6a",fontSize:10,margin:"0 0 6px",letterSpacing:2}}>3 JOKERS · 1 DE CHAQUE</p>
         <p style={{color:"#2a3a5a",fontSize:9,margin:"0 0 20px"}}>Verrouillés au coup d'envoi du 11 juin</p>
-        {/* Dots */}
+        {/* Jokers icons */}
         <div style={{display:"flex",gap:10,justifyContent:"center"}}>
-          {[0,1,2].map(i=>(
-            <div key={i} style={{width:40,height:40,borderRadius:"50%",
-              background:i<selected.length?"rgba(201,168,76,0.12)":"rgba(255,255,255,0.03)",
-              border:`2px solid ${i<selected.length?"#C9A84C":"rgba(255,255,255,0.06)"}`,
+          {JOKERS_DATA.map((j,i)=>(
+            <div key={j.id} style={{width:40,height:40,borderRadius:"50%",
+              background:"rgba(201,168,76,0.12)",
+              border:"2px solid #C9A84C",
               display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,
-              boxShadow:i<selected.length?"0 0 14px rgba(201,168,76,0.4)":"none",
-              transition:"all 0.4s"}}>
-              {i<selected.length?JOKERS_DATA.find(j=>j.id===selected[i])?.icon:""}
+              boxShadow:"0 0 14px rgba(201,168,76,0.4)"}}>
+              {j.icon}
             </div>
           ))}
         </div>
@@ -1460,19 +1473,76 @@ function JokersScreen({ playerName, onConfirm, onSkip }) {
       {/* Cards */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,padding:"0 12px",justifyItems:"center"}}>
         {JOKERS_DATA.map(j=>(
-          <JokerCard key={j.id} joker={j} selected={selected.includes(j.id)} onSelect={toggle} maxReached={selected.length>=3}/>
+          <JokerCard key={j.id} joker={j} selected={true} onSelect={()=>{}} maxReached={false}/>
         ))}
       </div>
-      {/* CTA */}
-      <div style={{margin:"24px 16px 0",display:"flex",flexDirection:"column",gap:10}}>
-        {selected.length===3&&(
-          <button onClick={()=>onConfirm(selected)} style={{width:"100%",padding:14,
-            background:"linear-gradient(135deg,#C9A84C,#f5d97a,#C9A84C)",
-            border:"none",borderRadius:14,color:"#04060f",
-            fontFamily:"'Black Ops One',cursive",fontSize:14,cursor:"pointer",letterSpacing:2}}>
-            🔒 CONFIRMER MES JOKERS
-          </button>
-        )}
+
+      {/* Config des jokers */}
+      <div style={{padding:"0 14px",marginTop:20,display:"flex",flexDirection:"column",gap:14}}>
+        
+        {/* Full Day config */}
+        <div style={{background:"rgba(192,132,252,0.08)",border:"1px solid rgba(192,132,252,0.2)",borderRadius:14,padding:14}}>
+          <div style={{fontSize:11,color:"#c084fc",letterSpacing:2,marginBottom:10}}>🌪️ FULL DAY — Choisis ta journée</div>
+          <select style={{width:"100%",padding:"10px 12px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#f0f4ff",fontSize:14,fontFamily:"inherit"}}
+            value={fullDayDate} onChange={e=>setFullDayDate(e.target.value)}>
+            <option value="">Sélectionne une journée</option>
+            {uniqueDates.map(d=><option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+
+        {/* Sniper config */}
+        <div style={{background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:14,padding:14}}>
+          <div style={{fontSize:11,color:"#f87171",letterSpacing:2,marginBottom:10}}>🎯 SNIPER — Pronostique la finale</div>
+          <div style={{display:"flex",gap:8,marginBottom:8}}>
+            <select style={{flex:1,padding:"10px 8px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#f0f4ff",fontSize:12,fontFamily:"inherit"}}
+              value={sniperTeam1} onChange={e=>setSniperTeam1(e.target.value)}>
+              <option value="">Équipe 1</option>
+              {allTeams.map(t=><option key={t} value={t}>{F(t)} {t}</option>)}
+            </select>
+            <select style={{flex:1,padding:"10px 8px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#f0f4ff",fontSize:12,fontFamily:"inherit"}}
+              value={sniperTeam2} onChange={e=>setSniperTeam2(e.target.value)}>
+              <option value="">Équipe 2</option>
+              {allTeams.filter(t=>t!==sniperTeam1).map(t=><option key={t} value={t}>{F(t)} {t}</option>)}
+            </select>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <input type="number" min="0" max="20" placeholder="0" value={sniperScore1} onChange={e=>setSniperScore1(e.target.value)}
+              style={{width:60,padding:"10px",textAlign:"center",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#f0f4ff",fontSize:18,fontWeight:700,fontFamily:"inherit"}}/>
+            <span style={{color:"#4a5568",fontSize:18,fontWeight:700}}>:</span>
+            <input type="number" min="0" max="20" placeholder="0" value={sniperScore2} onChange={e=>setSniperScore2(e.target.value)}
+              style={{width:60,padding:"10px",textAlign:"center",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#f0f4ff",fontSize:18,fontWeight:700,fontFamily:"inherit"}}/>
+            <span style={{color:"#6b7a99",fontSize:12,marginLeft:4}}>Score optionnel</span>
+          </div>
+        </div>
+
+        {/* Surprise config */}
+        <div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:14,padding:14}}>
+          <div style={{fontSize:11,color:"#34d399",letterSpacing:2,marginBottom:10}}>💥 SURPRISE — Choisis ton upset</div>
+          <div style={{maxHeight:180,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+            {upsetMatches.map(m=>(
+              <button key={m.key}
+                style={{padding:"10px 12px",textAlign:"left",background:surpriseMatch===m.key?"rgba(52,211,153,0.15)":"rgba(255,255,255,0.04)",
+                  border:`1px solid ${surpriseMatch===m.key?"#34d399":"rgba(255,255,255,0.08)"}`,
+                  borderRadius:10,color:"#f0f4ff",cursor:"pointer",fontFamily:"inherit",fontSize:12}}
+                onClick={()=>setSurpriseMatch(m.key)}>
+                <div>{m.label}</div>
+                <div style={{color:"#34d399",fontSize:10,marginTop:2}}>×{m.mult} si {m.underdog} gagne · {m.date}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <button onClick={()=>onConfirm({
+            fullday: fullDayDate,
+            sniper: {team1:sniperTeam1, team2:sniperTeam2, score1:sniperScore1, score2:sniperScore2},
+            surprise: surpriseMatch
+          })}
+          style={{width:"100%",padding:15,background:"linear-gradient(135deg,#C9A84C,#f5d97a,#C9A84C)",
+            border:"none",borderRadius:14,color:"#04060f",fontFamily:"'Black Ops One',cursive",
+            fontSize:14,cursor:"pointer",letterSpacing:2}}>
+          🔒 CONFIRMER MES JOKERS
+        </button>
         <button onClick={onSkip} style={{width:"100%",padding:12,background:"rgba(255,255,255,0.04)",
           border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,color:"#3a4a6a",
           fontFamily:"'Rajdhani',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:2}}>
