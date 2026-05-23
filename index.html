@@ -408,8 +408,9 @@ async function loadBest(key, fallback) {
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
 function App() {
-  const [players, setPlayers] = useState(() => loadLocal(PLAYERS_KEY, []));
-  const [results, setResults] = useState(() => loadLocal(RESULTS_KEY, {groups:{},ko:{r32:[],qf:[],sf:[],final:[]}}));
+  const [players, setPlayers] = useState([]);
+  const [results, setResults] = useState({groups:{},ko:{r32:[],qf:[],sf:[],final:[]}});
+  const [appReady, setAppReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState("score");
   const [screen, setScreen] = useState("main"); // main | onboarding | grid | jokers
