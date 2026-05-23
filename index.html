@@ -244,20 +244,64 @@ const PLAYERS_KEY="wc2026_players_v4", RESULTS_KEY="wc2026_results_v4", SYNC_KEY
 
 function scoreResult(h,a){if(h>a)return"H";if(h<a)return"A";return"N";}
 
-function computeScore(picks,results){
-  let pts=0;
+function computeScore(picks, results, jokerConfig) {
+  let pts = 0;
+  const joker = jokerConfig || null;
+
   Object.entries(GROUPS).forEach(([grp,{teams,matches}])=>{
     matches.forEach((matchDef,mIdx)=>{
-      const key=`${grp}_${mIdx}`;
-      const p=picks?.groups?.[key], r=results?.groups?.[key];
-      if(!p||!r||p.h===""||p.a===""||r.h===""||r.a==="")return;
-      const pH=parseInt(p.h),pA=parseInt(p.a),rH=parseInt(r.h),rA=parseInt(r.a);
-      if(isNaN(pH)||isNaN(pA)||isNaN(rH)||isNaN(rA))return;
-      if(pH===rH&&pA===rA){pts+=PTS.groupExact;}
-      else if(scoreResult(pH,pA)===scoreResult(rH,rA)){pts+=PTS.groupResult;}
-      if(pH===rH||pA===rA)pts+=PTS.groupGoal;
+      const key = `${grp}_${mIdx}`;
+      const p = picks?.groups?.[key];
+      const r = results?.groups?.[key];
+      if(!p||!r||p.h===""||p.a===""||r.h===""||r.a==="") return;
+      const pH=parseInt(p.h), pA=parseInt(p.a), rH=parseInt(r.h), rA=parseInt(r.a);
+      if(isNaN(pH)||isNaN(pA)||isNaN(rH)||isNaN(rA)) return;
+
+      // Points de base
+      let matchPts = 0;
+      if(pH===rH&&pA===rA) { matchPts += PTS.groupExact; }
+      else if(scoreResult(pH,pA)===scoreResult(rH,rA)) { matchPts += PTS.groupResult; }
+      if(pH===rH||pA===rA) matchPts += PTS.groupGoal;
+
+      // Joker FULL DAY — x2 si le match est sur la journée choisie
+      if(joker && joker.type==="fullday" && joker.date) {
+        const sched = matchDef[2]||{};
+        if(sched.d === joker.date) matchPts *= 2;
+      }
+
+      // Joker SURPRISE — multiplicateur si le underdog gagne
+      if(joker && joker.type==="surprise" && joker.matchKey === key) {
+        const upsets = getUpsetMatches();
+        const upsetMatch = upsets.find(u=>u.key===key);
+        if(upsetMatch) {
+          // Vérifie si le underdog a gagné
+          const underdogWon = (upsetMatch.underdog===teams[matchDef[0]] && rH>rA) ||
+                              (upsetMatch.underdog===teams[matchDef[1]] && rA>rH);
+          if(underdogWon) matchPts *= upsetMatch.mult;
+        }
+      }
+
+      pts += matchPts;
     });
   });
+
+  // Joker SNIPER — bonus si bonnes équipes finalistes / score exact finale
+  // (sera calculé en fin de tournoi quand on aura le résultat de la finale)
+  // Pour l'instant on ajoute le bonus sniper si les données sont dispo dans results.final
+  if(joker && joker.type==="sniper" && results?.final) {
+    const f = results.final;
+    const team1Match = joker.team1 && (f.team1===joker.team1 || f.team2===joker.team1);
+    const team2Match = joker.team2 && (f.team1===joker.team2 || f.team2===joker.team2);
+    const bothTeams = team1Match && team2Match;
+    const exactScore = bothTeams && joker.score1!=="" && joker.score2!=="" &&
+      ((parseInt(joker.score1)===parseInt(f.score1) && parseInt(joker.score2)===parseInt(f.score2)) ||
+       (parseInt(joker.score1)===parseInt(f.score2) && parseInt(joker.score2)===parseInt(f.score1)));
+
+    if(exactScore) pts += 150;
+    else if(bothTeams) pts += 50;
+    else if(team1Match || team2Match) pts += 20;
+  }
+
   return pts;
 }
 
@@ -844,7 +888,7 @@ function generateWhatsAppRecap(grp, results, players) {
   const scored = players
     .filter(p=>(p.grilles||[]).length>0)
     .map(p=>{
-      const scores=(p.grilles||[]).map(g=>g?computeScore(g,results):0);
+      const scores=(p.grilles||[]).map(g=>g?computeScore(g,results,p.jokers||null):0);
       return{name:p.name, best:scores.length>0?Math.max(...scores):0};
     })
     .sort((a,b)=>b.best-a.best);
