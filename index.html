@@ -6,11 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <title>Mondial 2026 Pronostics</title>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#04060f; }
-    #root { min-height:100vh; }
-  </style>
+  <style>* { margin:0; padding:0; box-sizing:border-box; } body { background:#04060f; } #root { min-height:100vh; }</style>
 </head>
 <body>
   <div id="root"></div>
@@ -513,7 +509,7 @@ function App() {
         updated[pi]={...updated[pi],grilles:g};
         await savePlayers(updated);
         // Si c'est la première grille et pas encore de jokers → écran jokers
-        const hasJokers = updated[pi].jokers && updated[pi].jokers.length > 0;
+        const hasJokers = updated[pi].jokers && updated[pi].jokers.type;
         if(!hasJokers && editGrille.idx === 0) {
           setPendingPicks({playerName: editGrille.playerName});
           setScreen("jokers");
@@ -1248,9 +1244,9 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
     </div>
   );
 
-  const myJokers = player.jokers || [];
+  const myJoker = player.jokers || null;
   const usedJokers = player.usedJokers || {};
-  const hasJokers = myJokers.length > 0;
+  const hasJokers = !!(myJoker && myJoker.type);
 
   // Tous les matchs à venir (pas encore joués)
   const upcomingMatches = Object.entries(GROUPS).flatMap(([grp,{teams,matches}]) =>
@@ -1285,52 +1281,33 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
       )}
 
       {/* Mes jokers */}
-      {hasJokers && (
-        <div style={styles.section}>
-          <div style={{marginBottom:12}}>
-            <div style={styles.sectionTitle}>Mes 3 jokers · <span style={{color:C.muted,fontSize:10,letterSpacing:1}}>VERROUILLÉS</span></div>
-          </div>
-          {myJokers.map(id => {
-            const joker = JOKERS_DATA.find(j=>j.id===id);
-            if(!joker) return null;
-            const isUsed = !!usedJokers[id];
-            const target = usedJokers[id];
-            const isPassive = id==="bouclier" || id==="sniper";
-            return (
-              <div key={id} style={{
-                ...styles.grilleCard,
-                borderColor: isUsed ? "rgba(0,230,118,0.2)" : `${joker.accent}30`,
-                background: isUsed ? "rgba(0,230,118,0.04)" : `${joker.accent}08`,
-                opacity: isUsed ? 0.7 : 1,
-              }}>
-                <div style={{fontSize:32, marginRight:14}}>{joker.icon}</div>
-                <div style={styles.grilleLeft}>
-                  <div style={{...styles.grilleName, color: joker.accent}}>{joker.name}</div>
-                  <div style={styles.grilleStatus}>
-                    {isUsed
-                      ? `🔥 Utilisé${target ? ` · ${target}` : ""}`
-                      : isPassive
-                      ? "⚙️ Automatique"
-                      : "✅ Disponible"}
-                  </div>
+      {hasJokers && (()=>{
+        const joker = JOKERS_DATA.find(j=>j.id===myJoker.type);
+        if(!joker) return null;
+        const isUsed = !!usedJokers[myJoker.type];
+        // Résumé de la config
+        let configSummary = "";
+        if(myJoker.type==="fullday") configSummary = `📅 Journée : ${myJoker.date||"?"}`;
+        if(myJoker.type==="sniper") configSummary = `🎯 ${myJoker.team1||"?"} vs ${myJoker.team2||"?"} ${myJoker.score1!==""&&myJoker.score2!==""?`· ${myJoker.score1}-${myJoker.score2}`:""}`;
+        if(myJoker.type==="surprise") configSummary = `💥 Match : ${myJoker.matchKey||"?"}`;
+        return (
+          <div style={styles.section}>
+            <div style={{marginBottom:12}}>
+              <div style={styles.sectionTitle}>Mon joker · <span style={{color:C.muted,fontSize:10,letterSpacing:1}}>VERROUILLÉ</span></div>
+            </div>
+            <div style={{...styles.grilleCard, borderColor:`${joker.accent}30`, background:`${joker.accent}08`}}>
+              <div style={{fontSize:32, marginRight:14}}>{joker.icon}</div>
+              <div style={styles.grilleLeft}>
+                <div style={{...styles.grilleName, color:joker.accent}}>{joker.name}</div>
+                <div style={styles.grilleStatus}>{configSummary}</div>
+                <div style={{...styles.grilleStatus, marginTop:4, color:isUsed?"#00E676":C.muted}}>
+                  {isUsed ? "🔥 Utilisé" : "✅ Configuré · En attente"}
                 </div>
-                {!isUsed && !isPassive && (
-                  <button
-                    style={{
-                      padding:"8px 14px",
-                      background:`linear-gradient(135deg,${joker.accent},${joker.accent}aa)`,
-                      border:"none", borderRadius:10, color:"#04060f",
-                      fontWeight:700, fontSize:12, cursor:"pointer", fontFamily:"inherit",
-                      flexShrink:0,
-                    }}
-                    onClick={()=>{ setActivating(id); setChosenTarget(null); }}
-                  >Activer</button>
-                )}
               </div>
-            );
-          })}
-        </div>
-      )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Panneau d'activation */}
       {activating && (()=>{
@@ -1848,7 +1825,6 @@ const styles = {
   fieldErr:{ color:C.red, fontSize:12, marginBottom:8 },
   existingBtn:{ display:"block", width:"100%", padding:"11px 14px", background:"rgba(255,255,255,0.04)", border:`1px solid ${C.border}`, borderRadius:10, color:C.text, cursor:"pointer", fontFamily:"inherit", textAlign:"left", fontSize:14, marginBottom:6 },
 };
-
 
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
   </script>
