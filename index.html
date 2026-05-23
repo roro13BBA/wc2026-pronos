@@ -1431,7 +1431,8 @@ function JokersTab({ currentUser, players, results, onChooseJokers, onSaveJokers
 
 // ─── JOKERS SCREEN ────────────────────────────────────────────────────────────
 function JokersScreen({ playerName, onConfirm, onSkip }) {
-  // Tous les 3 jokers sont automatiquement donnés
+  const [selected, setSelected] = useState(null); // joker sélectionné
+  const [step, setStep] = useState("pick"); // pick | config
   const [sniperTeam1, setSniperTeam1] = useState("");
   const [sniperTeam2, setSniperTeam2] = useState("");
   const [sniperScore1, setSniperScore1] = useState("");
@@ -1470,28 +1471,51 @@ function JokersScreen({ playerName, onConfirm, onSkip }) {
           ))}
         </div>
       </div>
-      {/* Cards */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,padding:"0 12px",justifyItems:"center"}}>
-        {JOKERS_DATA.map(j=>(
-          <JokerCard key={j.id} joker={j} selected={true} onSelect={()=>{}} maxReached={false}/>
-        ))}
-      </div>
+      {/* Step 1 : Sélection */}
+      {step==="pick" && <>
+        <p style={{textAlign:"center",color:"#3a4a6a",fontSize:10,letterSpacing:2,marginBottom:16}}>CHOISIS TON JOKER</p>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,padding:"0 12px",justifyItems:"center"}}>
+          {JOKERS_DATA.map(j=>(
+            <JokerCard key={j.id} joker={j} selected={selected===j.id} onSelect={id=>setSelected(id)} maxReached={false}/>
+          ))}
+        </div>
+        <div style={{padding:"20px 14px 0",display:"flex",flexDirection:"column",gap:10}}>
+          <button
+            style={{width:"100%",padding:15,
+              background:selected?"linear-gradient(135deg,#C9A84C,#f5d97a,#C9A84C)":"rgba(255,255,255,0.06)",
+              border:"none",borderRadius:14,color:selected?"#04060f":"#3a4a6a",
+              fontFamily:"'Black Ops One',cursive",fontSize:14,
+              cursor:selected?"pointer":"not-allowed",letterSpacing:2}}
+            onClick={()=>selected&&setStep("config")}>
+            {selected ? `CONFIGURER ${JOKERS_DATA.find(j=>j.id===selected)?.icon}` : "SÉLECTIONNE UN JOKER"}
+          </button>
+          <button onClick={onSkip} style={{width:"100%",padding:12,background:"rgba(255,255,255,0.04)",
+            border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,color:"#3a4a6a",
+            fontFamily:"'Rajdhani',sans-serif",fontSize:12,cursor:"pointer",letterSpacing:2}}>
+            Choisir plus tard
+          </button>
+        </div>
+      </>}
+
+      {/* Step 2 : Config */}
+      {step==="config" && <>
+        <button onClick={()=>setStep("pick")} style={{background:"none",border:"none",color:"#C9A84C",fontSize:14,cursor:"pointer",padding:"0 14px 16px",fontFamily:"inherit"}}>← Retour</button>
 
       {/* Config des jokers */}
       <div style={{padding:"0 14px",marginTop:20,display:"flex",flexDirection:"column",gap:14}}>
         
         {/* Full Day config */}
-        <div style={{background:"rgba(192,132,252,0.08)",border:"1px solid rgba(192,132,252,0.2)",borderRadius:14,padding:14}}>
+        {selected==="fullday" && <div style={{background:"rgba(192,132,252,0.08)",border:"1px solid rgba(192,132,252,0.2)",borderRadius:14,padding:14}}>
           <div style={{fontSize:11,color:"#c084fc",letterSpacing:2,marginBottom:10}}>🌪️ FULL DAY — Choisis ta journée</div>
           <select style={{width:"100%",padding:"10px 12px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#f0f4ff",fontSize:14,fontFamily:"inherit"}}
             value={fullDayDate} onChange={e=>setFullDayDate(e.target.value)}>
             <option value="">Sélectionne une journée</option>
             {uniqueDates.map(d=><option key={d} value={d}>{d}</option>)}
           </select>
-        </div>
+        </div>}
 
         {/* Sniper config */}
-        <div style={{background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:14,padding:14}}>
+        {selected==="sniper" && <div style={{background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:14,padding:14}}>
           <div style={{fontSize:11,color:"#f87171",letterSpacing:2,marginBottom:10}}>🎯 SNIPER — Pronostique la finale</div>
           <div style={{display:"flex",gap:8,marginBottom:8}}>
             <select style={{flex:1,padding:"10px 8px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#f0f4ff",fontSize:12,fontFamily:"inherit"}}
@@ -1513,10 +1537,10 @@ function JokersScreen({ playerName, onConfirm, onSkip }) {
               style={{width:60,padding:"10px",textAlign:"center",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#f0f4ff",fontSize:18,fontWeight:700,fontFamily:"inherit"}}/>
             <span style={{color:"#6b7a99",fontSize:12,marginLeft:4}}>Score optionnel</span>
           </div>
-        </div>
+        </div>}
 
         {/* Surprise config */}
-        <div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:14,padding:14}}>
+        {selected==="surprise" && <div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:14,padding:14}}>
           <div style={{fontSize:11,color:"#34d399",letterSpacing:2,marginBottom:10}}>💥 SURPRISE — Choisis ton upset</div>
           <div style={{maxHeight:180,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
             {upsetMatches.map(m=>(
@@ -1530,14 +1554,15 @@ function JokersScreen({ playerName, onConfirm, onSkip }) {
               </button>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* CTA */}
-        <button onClick={()=>onConfirm({
-            fullday: fullDayDate,
-            sniper: {team1:sniperTeam1, team2:sniperTeam2, score1:sniperScore1, score2:sniperScore2},
-            surprise: surpriseMatch
-          })}
+        <button onClick={()=>{
+            const config = selected==="fullday" ? {type:"fullday", date:fullDayDate}
+              : selected==="sniper" ? {type:"sniper", team1:sniperTeam1, team2:sniperTeam2, score1:sniperScore1, score2:sniperScore2}
+              : {type:"surprise", matchKey:surpriseMatch};
+            onConfirm(config);
+          }}
           style={{width:"100%",padding:15,background:"linear-gradient(135deg,#C9A84C,#f5d97a,#C9A84C)",
             border:"none",borderRadius:14,color:"#04060f",fontFamily:"'Black Ops One',cursive",
             fontSize:14,cursor:"pointer",letterSpacing:2}}>
@@ -1549,6 +1574,7 @@ function JokersScreen({ playerName, onConfirm, onSkip }) {
           Choisir plus tard
         </button>
       </div>
+      </>}
     </div>
   );
 }
