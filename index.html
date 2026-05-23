@@ -729,12 +729,18 @@ function Onboarding({players,onJoin}){
           }}>Rejoindre →</button>
           {players.length>0&&(
             <div style={{marginTop:20}}>
-              <p style={{...styles.fieldLabel,marginBottom:8}}>Déjà inscrit ?</p>
-              {players.map(p=>(
-                <button key={p.name} style={styles.existingBtn} onClick={()=>onJoin(p.name)}>
-                  {p.name} · {(p.grilles||[]).length} grille(s)
-                </button>
-              ))}
+              <p style={{...styles.fieldLabel,marginBottom:8}}>Joueurs inscrits ({players.length})</p>
+              <div style={{background:"rgba(255,255,255,0.03)",borderRadius:12,padding:"8px 12px"}}>
+                {players.length===0
+                  ? <p style={{color:C.muted,fontSize:13,textAlign:"center",padding:"8px 0"}}>Aucun joueur encore</p>
+                  : players.map(p=>(
+                    <div key={p.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 4px",borderBottom:`1px solid ${C.border}`}}>
+                      <span style={{fontSize:14,color:C.text}}>{p.name}</span>
+                      <span style={{fontSize:12,color:C.muted}}>{(p.grilles||[]).length} grille(s)</span>
+                    </div>
+                  ))
+                }
+              </div>
             </div>
           )}
         </div>
@@ -1110,7 +1116,8 @@ function MatchsTab({results,lastSync,isAdmin,players,onSync,onStartEditing,onRes
 }
 
 // ─── CLASSEMENT TAB ───────────────────────────────────────────────────────────
-function ClassementTab({players,results,currentUser}){
+function ClassementTab({players,results,currentUser,onRefresh}){
+  React.useEffect(()=>{ onRefresh && onRefresh(); },[]);
   const scored=players
     .map(p=>{
       const grilles=p.grilles||[];
